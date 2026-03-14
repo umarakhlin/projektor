@@ -1,0 +1,259 @@
+// Projektor - Prisma Schema
+// Step 1: Database & Data Model
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ============ ENUMS ============
+
+enum ProjectStatus {
+  Draft
+  Recruiting
+  Active
+  Closed
+}
+
+enum ProjectStage {
+  Idea
+  Validation
+  Building
+  Launched
+}
+
+enum ProjectCategory {
+  SaaS
+  Hardware
+  Creative
+  NonProfit
+  Other
+}
+
+enum RoleState {
+  Open
+  HasApplicants
+  Filled
+}
+
+enum ApplicationStatus {
+  Applied
+  InReview
+  Offered
+  Accepted
+  Rejected
+  Declined
+}
+
+enum OfferStatus {
+  Offered
+  Accepted
+  Declined
+}
+
+enum TaskStatus {
+  Todo
+  Doing
+  Done
+}
+
+enum ReportTargetType {
+  Project
+  User
+}
+
+enum ReportStatus {
+  Pending
+  Reviewed
+  Resolved
+}
+
+// ============ MODELS ============
+
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  passwordHash String    @map("password_hash")
+  name         String?
+  skills       String?   // JSON array of skill strings
+  links        String?   // JSON array of {url, label}
+  availability String?
+  settings     String?   // JSON: { showEmail?: boolean }
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  projectsOwned   Project[]      @relation("ProjectOwner")
+  applications    Application[]
+  memberships     Membership[]
+  tasksCreated    Task[]         @relation("TaskCreator")
+  tasksAssigned   Task[]         @relation("TaskAssignee")
+  updates         Update[]
+  chatMessages    ChatMessage[]
+  reports         Report[]
+  savedSearches   SavedSearch[]
+
+  @@map("users")
+}
+
+model Project {
+  id             String         @id @default(cuid())
+  ownerId        String         @map("owner_id")
+  title          String
+  pitch          String?
+  problem        String?
+  solution       String?
+  stage          ProjectStage   @default(Idea)
+  category       ProjectCategory @default(Other)
+  status         ProjectStatus  @default(Draft)
+  hoursPerWeek   Int?           @map("hours_per_week")
+  durationMonths Int?          @map("duration_months")
+  rewardModels   String?        @map("reward_models") // JSON: array of {type, ...fields}
+  createdAt      DateTime       @default(now()) @map("created_at")
+  updatedAt      DateTime       @updatedAt @map("updated_at")
+
+  owner       User         @relation("ProjectOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  roles       Role[]
+  memberships Membership[]
+  tasks       Task[]
+  updates     Update[]
+  chatMessages ChatMessage[]
+
+  @@map("projects")
+}
+
+model Role {
+  id                   String    @id @default(cuid())
+  projectId            String    @map("project_id")
+  title                String
+  requirements         String?   // JSON array of skill strings
+  timeExpectation      String?   @map("time_expectation")
+  openings             Int       @default(1)
+  filledCount          Int       @default(0) @map("filled_count")
+  state                RoleState @default(Open)
+  compensationOverride String?   @map("compensation_override") // JSON: overrides project default
+  createdAt            DateTime  @default(now()) @map("created_at")
+  updatedAt            DateTime  @updatedAt @map("updated_at")
+
+  project       Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  applications  Application[]
+  memberships   Membership[]
+
+  @@map("roles")
+}
+
+model Application {
+  id          String            @id @default(cuid())
+  roleId      String            @map("role_id")
+  applicantId String            @map("applicant_id")
+  message     String?
+  links       String?           // JSON array of {url, label}
+  availability String?
+  status      ApplicationStatus @default(Applied)
+  createdAt   DateTime          @default(now()) @map("created_at")
+  updatedAt   DateTime          @updatedAt @map("updated_at")
+
+  role    Role    @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  applicant User  @relation(fields: [applicantId], references: [id], onDelete: Cascade)
+  offer   Offer?
+
+  @@map("applications")
+}
+
+model Offer {
+  id            String      @id @default(cuid())
+  applicationId String      @unique @map("application_id")
+  termsSnapshot String      @map("terms_snapshot") // JSON: role, commitment, reward at offer time
+  status        OfferStatus @default(Offered)
+  createdAt     DateTime    @default(now()) @map("created_at")
+  updatedAt     DateTime    @updatedAt @map("updated_at")
+
+  application Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+}
+
+model Membership {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  projectId String   @map("project_id")
+  roleId    String   @map("role_id")
+  joinedAt  DateTime @default(now()) @map("joined_at")
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  role    Role    @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, projectId])
+  @@map("memberships")
+}
+
+model Task {
+  id         String     @id @default(cuid())
+  projectId  String     @map("project_id")
+  creatorId  String     @map("creator_id")
+  assigneeId String?    @map("assignee_id")
+  title      String
+  status     TaskStatus @default(Todo)
+  createdAt  DateTime   @default(now()) @map("created_at")
+  updatedAt  DateTime   @updatedAt @map("updated_at")
+
+  project  Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  creator  User    @relation("TaskCreator", fields: [creatorId], references: [id], onDelete: Cascade)
+  assignee User?   @relation("TaskAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+
+  @@map("tasks")
+}
+
+model Update {
+  id        String   @id @default(cuid())
+  projectId String   @map("project_id")
+  authorId  String   @map("author_id")
+  content   String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  author  User    @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@map("updates")
+}
+
+model Report {
+  id         String           @id @default(cuid())
+  reporterId String           @map("reporter_id")
+  targetType ReportTargetType @map("target_type")
+  targetId   String           @map("target_id") // Project id or User id (polymorphic)
+  reason     String?
+  status     ReportStatus     @default(Pending)
+  createdAt  DateTime         @default(now()) @map("created_at")
+
+  reporter User @relation(fields: [reporterId], references: [id], onDelete: Cascade)
+
+  @@map("reports")
+}
+
+model ChatMessage {
+  id        String   @id @default(cuid())
+  projectId String   @map("project_id")
+  authorId  String   @map("author_id")
+  content   String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  author  User    @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@map("chat_messages")
+}
+
+model SavedSearch {
+  id         String   @id @default(cuid())
+  userId     String   @map("user_id")
+  label      String
+  filtersJson String  @map("filters_json") // JSON: {roleType, skills, compensation, stage, ...}
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("saved_searches")
+}
