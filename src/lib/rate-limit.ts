@@ -1,10 +1,12 @@
-import { createClient, type RedisClientType } from "redis";
+import { createClient } from "redis";
+
+type RedisConn = ReturnType<typeof createClient>;
 
 const store = new Map<string, { count: number; resetAt: number }>();
 const CLEANUP_INTERVAL = 60_000; // 1 min
 const REDIS_KEY_PREFIX = "rate_limit:";
-let redisClient: RedisClientType | null = null;
-let redisConnectPromise: Promise<RedisClientType | null> | null = null;
+let redisClient: RedisConn | null = null;
+let redisConnectPromise: Promise<RedisConn | null> | null = null;
 
 function cleanup() {
   const now = Date.now();
@@ -19,7 +21,7 @@ function getRedisUrl(): string | null {
   return raw ? raw : null;
 }
 
-async function getRedisClient(): Promise<RedisClientType | null> {
+async function getRedisClient(): Promise<RedisConn | null> {
   const url = getRedisUrl();
   if (!url) return null;
   if (redisClient?.isOpen) return redisClient;

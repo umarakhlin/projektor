@@ -18,6 +18,10 @@ type Membership = {
   role: { title: string };
 };
 
+type ApplicationStatsResponse = {
+  byProject: { projectId: string; openApplications: number }[];
+};
+
 export default function MyProjectsPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
@@ -48,17 +52,15 @@ export default function MyProjectsPage() {
     }
 
     Promise.all([
-      fetchOrThrow("/api/projects", [] as unknown[]),
-      fetchOrThrow("/api/me/memberships", [] as unknown[]),
-      fetchOrThrow("/api/me/application-stats", { byProject: [] as unknown[] })
+      fetchOrThrow<Project[]>("/api/projects", []),
+      fetchOrThrow<Membership[]>("/api/me/memberships", []),
+      fetchOrThrow<ApplicationStatsResponse>("/api/me/application-stats", { byProject: [] })
     ])
       .then(([projects, memberships, stats]) => {
         setOwned(Array.isArray(projects) ? projects : []);
         setJoined(Array.isArray(memberships) ? memberships : []);
         const map: Record<string, number> = {};
-        const byProject = stats && typeof stats === "object" && Array.isArray((stats as { byProject?: unknown }).byProject)
-          ? (stats as { byProject: { projectId: string; openApplications: number }[] }).byProject
-          : [];
+        const byProject = Array.isArray(stats.byProject) ? stats.byProject : [];
         byProject.forEach((p) => {
           map[p.projectId] = p.openApplications;
         });

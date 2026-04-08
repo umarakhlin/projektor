@@ -64,9 +64,9 @@ export default function InboxPage() {
     }
 
     Promise.all([
-      fetchOrThrow("/api/offers", [] as unknown[]),
-      fetchOrThrow("/api/me/application-notifications", [] as unknown[]),
-      fetchOrThrow("/api/me/memberships", [] as unknown[])
+      fetchOrThrow<Offer[]>("/api/offers", []),
+      fetchOrThrow<AppNotification[]>("/api/me/application-notifications", []),
+      fetchOrThrow<Membership[]>("/api/me/memberships", [])
     ])
       .then(([offersList, apps, mems]) => {
         setOffers(Array.isArray(offersList) ? offersList : []);
