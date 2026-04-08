@@ -22,7 +22,7 @@
     "bcryptjs": "^3.0.3",
     "eslint": "8.57.0",
     "eslint-config-next": "14.2.35",
-    "next": "14.2.23",
+    "next": "14.2.35",
     "next-auth": "^4.24.13",
     "object-hash": "^3.0.0",
     "openid-client": "^6.8.2",
