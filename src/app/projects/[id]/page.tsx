@@ -6,6 +6,7 @@ import { authOptions } from "@/lib/auth";
 import { parseJsonArray } from "@/lib/safe-json";
 import { ProjectStatusControls } from "@/components/project-status-controls";
 import { ReportButton } from "@/components/report-button";
+import { ProjectSaveHeartClient } from "@/components/project-save-heart-client";
 
 export default async function ProjectDetailPage({
   params
@@ -41,6 +42,18 @@ export default async function ProjectDetailPage({
   const canApply = project.status === "Recruiting";
   const openRoles = project.roles.filter((r) => r.state !== "Filled");
 
+  let savedByMe = false;
+  if (session?.user?.id) {
+    const row = await prisma.savedProject.findFirst({
+      where: { userId: session.user.id, projectId: project.id }
+    });
+    savedByMe = row != null;
+  }
+
+  const showSaveHeart =
+    session &&
+    !(isOwner && project.status === "Draft");
+
   return (
     <div className="mx-auto max-w-2xl">
       <div className="mb-6">
@@ -71,7 +84,15 @@ export default async function ProjectDetailPage({
             </span>
           ))}
         </div>
-        <h1 className="text-2xl font-semibold">{project.title}</h1>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <h1 className="text-2xl font-semibold">{project.title}</h1>
+          {showSaveHeart && (
+            <ProjectSaveHeartClient
+              projectId={project.id}
+              initialSaved={!!savedByMe}
+            />
+          )}
+        </div>
         <div className="mt-1 flex items-center gap-3">
           <p className="text-sm text-slate-400">
             by {project.owner.name ?? "Unknown"}
@@ -80,6 +101,29 @@ export default async function ProjectDetailPage({
             <ReportButton targetType="Project" targetId={project.id} />
           )}
         </div>
+        {isOwner && project.status === "Draft" && (
+          <div className="mt-3">
+            <Link
+              href={`/create?draft=${encodeURIComponent(project.id)}`}
+              className="inline-block rounded-lg border border-brand bg-brand px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-light"
+            >
+              Continue editing draft →
+            </Link>
+          </div>
+        )}
+        {isMember && (
+          <div className="mt-3 flex flex-col items-start gap-2">
+            <Link
+              href={`/projects/${project.id}/space`}
+              className="inline-block rounded-lg border border-brand/50 bg-brand/10 px-3 py-1.5 text-sm font-medium text-brand hover:bg-brand/20"
+            >
+              Open Team Space →
+            </Link>
+            <Link href="/" className="text-sm text-brand hover:underline">
+              ← Back to feed
+            </Link>
+          </div>
+        )}
       </div>
 
       {project.pitch && (
@@ -170,7 +214,6 @@ export default async function ProjectDetailPage({
           status={project.status}
           memberCount={project.memberships.length}
           isOwner={isOwner}
-          isMember={!!isMember}
         />
         {isOwner && project.status !== "Draft" && (
           <Link
@@ -180,9 +223,6 @@ export default async function ProjectDetailPage({
             View applications
           </Link>
         )}
-        <Link href="/" className="text-sm text-brand hover:underline">
-          ← Back to feed
-        </Link>
       </div>
     </div>
   );

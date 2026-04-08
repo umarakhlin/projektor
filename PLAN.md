@@ -106,6 +106,58 @@
 
 ---
 
+## Release Alignment (Product GO/NO-GO)
+
+This section aligns engineering execution with the Product "Final Release Decision Pack".
+
+### Current status by pack section
+
+- **Must-have completed items:** Treated as launch-accepted and done.
+  - Auth/session launch reliability (including explicit 401/403 behavior on core UX)
+  - Submission integrity hardening for `POST /api/applications`
+  - Production-readiness release discipline and launch gate definition
+- **Deferred (post-launch):** Keep deferred unless they become launch-blocking.
+  - Broader non-critical API test expansion
+  - Deep observability/dashboard tuning beyond minimum launch signals
+  - Wider E2E coverage for secondary journeys
+  - Non-launch auth/system refactors
+  - Performance work not tied to launch-critical regressions
+
+### Launch gate (must all be true at release cut)
+
+- Core smoke journey passes in production-like environment:
+  - auth -> valid session -> submit application -> success confirmation
+- Critical API checks pass:
+  - auth/session path checks
+  - `POST /api/applications` write-path checks
+- No open P0/P1 defects in auth/session or submission integrity paths
+- No unresolved duplicate-write or partial-write behavior on submission retries
+- Rollback owner identified and on-call during launch window
+
+### Automatic NO-GO triggers
+
+- Smoke journey fails and cannot be reproduced/fixed quickly
+- Submission path shows data loss, duplicate creation, or inconsistent state
+- Auth failures cause lockout/looping in launch flow
+- Any critical checklist item is unverified or skipped
+
+### Day-0 rollback triggers
+
+- Data integrity breach: duplicate or missing/partial submissions
+- Sustained auth outage pattern blocking core flow
+- Repeated 5xx spikes on launch-critical endpoints with user impact
+- Core auth + submission journey success rate drops below acceptable threshold
+- No verified hotfix within agreed incident timebox
+
+### Weekly execution mapping (engineering)
+
+- **Week 1:** Release checklist discipline + auth/session reliability verification (done)
+- **Week 2:** Redis-backed rate limiting for production robustness (in progress / pending)
+- **Week 3:** Launch-critical regression tests and smoke gate automation
+- **Week 4:** Day-0 monitoring and rollback drill readiness
+
+---
+
 ## AI Design Principles
 
 - **Execution-first** — AI increases shipping, not chatting

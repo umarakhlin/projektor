@@ -1,22 +1,19 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 
 type Props = {
   projectId: string;
   status: string;
   memberCount: number;
   isOwner: boolean;
-  isMember: boolean;
 };
 
 export function ProjectStatusControls({
   projectId,
   status,
   memberCount,
-  isOwner,
-  isMember
+  isOwner
 }: Props) {
   const [loading, setLoading] = useState(false);
   const [currentStatus, setCurrentStatus] = useState(status);
@@ -40,14 +37,6 @@ export function ProjectStatusControls({
 
   return (
     <div className="flex flex-wrap items-center gap-3">
-      {isMember && (
-        <Link
-          href={`/projects/${projectId}/space`}
-          className="text-sm text-brand hover:underline"
-        >
-          Team Space
-        </Link>
-      )}
       {isOwner && projectId && currentStatus !== "Draft" && (
         <>
           {currentStatus === "Recruiting" && memberCount >= 1 && (

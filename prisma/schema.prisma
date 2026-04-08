@@ -6,7 +6,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -94,7 +94,7 @@ model User {
   updates         Update[]
   chatMessages    ChatMessage[]
   reports         Report[]
-  savedSearches   SavedSearch[]
+  savedProjects   SavedProject[]
 
   @@map("users")
 }
@@ -119,8 +119,9 @@ model Project {
   roles       Role[]
   memberships Membership[]
   tasks       Task[]
-  updates     Update[]
+  updates      Update[]
   chatMessages ChatMessage[]
+  savedBy      SavedProject[]
 
   @@map("projects")
 }
@@ -196,6 +197,7 @@ model Task {
   assigneeId String?    @map("assignee_id")
   title      String
   status     TaskStatus @default(Todo)
+  dueAt      DateTime?  @map("due_at")
   createdAt  DateTime   @default(now()) @map("created_at")
   updatedAt  DateTime   @updatedAt @map("updated_at")
 
@@ -246,14 +248,15 @@ model ChatMessage {
   @@map("chat_messages")
 }
 
-model SavedSearch {
-  id         String   @id @default(cuid())
-  userId     String   @map("user_id")
-  label      String
-  filtersJson String  @map("filters_json") // JSON: {roleType, skills, compensation, stage, ...}
-  createdAt  DateTime @default(now()) @map("created_at")
+model SavedProject {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  projectId String   @map("project_id")
+  createdAt DateTime @default(now()) @map("created_at")
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
-  @@map("saved_searches")
+  @@unique([userId, projectId])
+  @@map("saved_projects")
 }

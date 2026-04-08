@@ -14,7 +14,11 @@ export async function PATCH(
 
   const { id: projectId, taskId } = await params;
   const body = await req.json();
-  const { status, assigneeId } = body as { status?: string; assigneeId?: string | null };
+  const { status, assigneeId, dueAt } = body as {
+    status?: string;
+    assigneeId?: string | null;
+    dueAt?: string | null;
+  };
 
   const validStatuses = ["Todo", "Doing", "Done"];
   if (status !== undefined && !validStatuses.includes(status)) {
@@ -42,12 +46,16 @@ export async function PATCH(
   const updateData: {
     status?: "Todo" | "Doing" | "Done";
     assignee?: { connect: { id: string } } | { disconnect: true };
+    dueAt?: Date | null;
   } = {};
   if (status !== undefined) updateData.status = status as "Todo" | "Doing" | "Done";
   if (assigneeId !== undefined) {
     updateData.assignee = assigneeId
       ? { connect: { id: assigneeId } }
       : { disconnect: true };
+  }
+  if (dueAt !== undefined) {
+    updateData.dueAt = dueAt ? new Date(dueAt) : null;
   }
 
   const updated = await prisma.task.update({

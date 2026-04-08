@@ -3,8 +3,9 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
-
-type SavedSearchItem = { id: string; label: string; filters: Record<string, string> };
+import { parseJsonArray } from "@/lib/safe-json";
+import { FEED_ROLE_TITLE_OPTIONS } from "@/lib/feed-role-titles";
+import { SaveProjectHeart } from "@/components/save-project-heart";
 
 type Project = {
   id: string;
@@ -34,9 +35,9 @@ export default function ExplorePage() {
   const [offset, setOffset] = useState(0);
   const [stage, setStage] = useState("");
   const [category, setCategory] = useState("");
-  const [savedSearches, setSavedSearches] = useState<SavedSearchItem[]>([]);
-  const [saveLabel, setSaveLabel] = useState("");
-  const [saving, setSaving] = useState(false);
+  const [roleType, setRoleType] = useState("");
+  const [savedIds, setSavedIds] = useState<Set<string>>(() => new Set());
+  const [errorState, setErrorState] = useState<"auth" | "server" | null>(null);
 
   async function loadFeed(offsetVal = 0, append = false) {
     const params = new URLSearchParams();
@@ -44,10 +45,19 @@ export default function ExplorePage() {
     params.set("offset", String(offsetVal));
     if (stage) params.set("stage", stage);
     if (category) params.set("category", category);
+    if (roleType) params.set("roleType", roleType);
 
     const res = await fetch(`/api/feed?${params}`);
-    if (!res.ok) return;
+    if (res.status === 401) {
+      setErrorState("auth");
+      return;
+    }
+    if (!res.ok) {
+      setErrorState("server");
+      return;
+    }
     const data = await res.json();
+    setErrorState(null);
 
     setProjects((prev) => (append ? [...prev, ...data.projects] : data.projects));
     setHasMore(data.hasMore);
@@ -57,43 +67,38 @@ export default function ExplorePage() {
   useEffect(() => {
     setLoading(true);
     loadFeed(0, false).finally(() => setLoading(false));
-  }, [stage, category]);
+  }, [stage, category, roleType]);
 
   useEffect(() => {
-    if (status !== "authenticated") return;
-    fetch("/api/saved-searches")
-      .then((r) => (r.ok ? r.json() : []))
-      .then(setSavedSearches)
-      .catch(() => setSavedSearches([]));
+    if (status !== "authenticated") {
+      setSavedIds(new Set());
+      return;
+    }
+    fetch("/api/me/saved-projects")
+      .then((r) => {
+        if (r.status === 401) {
+          setErrorState("auth");
+          return { projectIds: [] };
+        }
+        if (!r.ok) {
+          setErrorState("server");
+          return { projectIds: [] };
+        }
+        return r.json();
+      })
+      .then((d: { projectIds?: string[] }) =>
+        setSavedIds(new Set(Array.isArray(d.projectIds) ? d.projectIds : []))
+      )
+      .catch(() => setSavedIds(new Set()));
   }, [status]);
 
-  function applySavedSearch(filters: Record<string, string>) {
-    setStage(filters.stage ?? "");
-    setCategory(filters.category ?? "");
-  }
-
-  async function saveCurrentSearch() {
-    if (!saveLabel.trim() || saving) return;
-    setSaving(true);
-    const res = await fetch("/api/saved-searches", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        label: saveLabel.trim(),
-        filters: { stage, category }
-      })
+  function setProjectSaved(projectId: string, saved: boolean) {
+    setSavedIds((prev) => {
+      const next = new Set(prev);
+      if (saved) next.add(projectId);
+      else next.delete(projectId);
+      return next;
     });
-    if (res.ok) {
-      const item = await res.json();
-      setSavedSearches((prev) => [item, ...prev]);
-      setSaveLabel("");
-    }
-    setSaving(false);
-  }
-
-  async function deleteSavedSearch(id: string) {
-    await fetch(`/api/saved-searches/${id}`, { method: "DELETE" });
-    setSavedSearches((prev) => prev.filter((s) => s.id !== id));
   }
 
   function loadMore() {
@@ -102,7 +107,17 @@ export default function ExplorePage() {
 
   return (
     <div className="mx-auto max-w-2xl">
-      <h1 className="mb-4 text-xl font-semibold">Explore</h1>
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-xl font-semibold">Explore</h1>
+        {status === "authenticated" && (
+          <Link
+            href="/saved"
+            className="rounded-lg border border-brand/40 bg-brand/10 px-3 py-1.5 text-sm font-medium text-brand hover:bg-brand/20"
+          >
+            Saved
+          </Link>
+        )}
+      </div>
 
       <div className="mb-6 rounded-lg border border-slate-700 bg-slate-900/50 p-4">
         <p className="mb-3 text-sm font-medium text-slate-400">Filters</p>
@@ -136,57 +151,37 @@ export default function ExplorePage() {
               <option value="Other">Other</option>
             </select>
           </label>
-        </div>
-
-        {status === "authenticated" && (
-          <div className="mt-4 flex flex-wrap items-end gap-3 border-t border-slate-700 pt-4">
-            <label className="flex flex-col gap-1">
-              <span className="text-xs text-slate-500">Save this search</span>
-              <input
-                value={saveLabel}
-                onChange={(e) => setSaveLabel(e.target.value)}
-                placeholder="e.g. Building stage SaaS"
-                className="w-48 rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-200 placeholder:text-slate-500 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
-              />
-            </label>
-            <button
-              type="button"
-              onClick={saveCurrentSearch}
-              disabled={saving || !saveLabel.trim()}
-              className="rounded-lg bg-brand px-3 py-2 text-sm font-medium text-white hover:bg-brand-light disabled:opacity-50"
+          <label className="flex flex-col gap-1">
+            <span className="text-xs text-slate-500">Role needed</span>
+            <select
+              value={roleType}
+              onChange={(e) => setRoleType(e.target.value)}
+              className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-200 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
             >
-              Save
-            </button>
-          </div>
-        )}
-
-        {status === "authenticated" && savedSearches.length > 0 && (
-          <div className="mt-4 border-t border-slate-700 pt-4">
-            <p className="mb-2 text-xs text-slate-500">Saved searches</p>
-            <div className="flex flex-wrap gap-2">
-              {savedSearches.map((s) => (
-                <span key={s.id} className="flex items-center gap-1 rounded-full bg-slate-800 px-3 py-1 text-sm">
-                  <button
-                    type="button"
-                    onClick={() => applySavedSearch(s.filters)}
-                    className="text-brand hover:underline"
-                  >
-                    {s.label}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => deleteSavedSearch(s.id)}
-                    className="text-slate-500 hover:text-red-400"
-                    aria-label="Delete"
-                  >
-                    ×
-                  </button>
-                </span>
+              <option value="">All</option>
+              {FEED_ROLE_TITLE_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
               ))}
-            </div>
-          </div>
+            </select>
+          </label>
+        </div>
+        {status === "authenticated" && (
+          <p className="mt-3 text-xs text-slate-500">Tap ♡ on a card to save it to your list.</p>
         )}
       </div>
+
+      {errorState === "auth" && (
+        <div className="mb-4 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-sm text-amber-300">
+          Please sign in again to load your personalized feed.
+        </div>
+      )}
+      {errorState === "server" && (
+        <div className="mb-4 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-sm text-amber-300">
+          We couldn&apos;t load all data. Try refreshing the page.
+        </div>
+      )}
 
       {loading ? (
         <p className="text-slate-400">Loading…</p>
@@ -195,20 +190,29 @@ export default function ExplorePage() {
       ) : (
         <div className="space-y-4">
           {projects.map((project) => {
-            const rewardModels = project.rewardModels
-              ? (JSON.parse(project.rewardModels) as { type: string }[])
-              : [];
+            const rewardModels = parseJsonArray<unknown>(project.rewardModels)
+              .map((item) => {
+                if (item == null || typeof item !== "object") return null;
+                const type = (item as { type?: unknown }).type;
+                if (typeof type !== "string") return null;
+                const normalizedType = type.trim();
+                return normalizedType ? { type: normalizedType } : null;
+              })
+              .filter((item): item is { type: string } => item !== null);
             const openRoles = project.roles.filter(
               (r) => r.openings - r.filledCount > 0
             );
 
             return (
-              <Link
+              <div
                 key={project.id}
-                href={`/projects/${project.id}`}
-                className="block rounded-lg border border-slate-700 bg-slate-900/50 p-4 transition hover:border-slate-600"
+                className="relative rounded-lg border border-slate-700 bg-slate-900/50 transition hover:border-slate-600"
               >
-                <div className="mb-2 flex flex-wrap gap-2">
+                <Link
+                  href={`/projects/${project.id}`}
+                  className="relative z-0 block p-4 pr-14"
+                >
+                  <div className="mb-2 flex flex-wrap gap-2">
                   <span
                     className={`rounded-full px-2 py-0.5 text-xs ${
                       project.status === "Recruiting"
@@ -241,7 +245,19 @@ export default function ExplorePage() {
                   {project.hoursPerWeek && project.durationMonths &&
                     ` · ${project.hoursPerWeek}h/wk · ${project.durationMonths}mo`}
                 </p>
-              </Link>
+                </Link>
+                {status === "authenticated" && (
+                  <div className="pointer-events-none absolute right-1 top-1 z-20">
+                    <div className="pointer-events-auto">
+                      <SaveProjectHeart
+                        projectId={project.id}
+                        saved={savedIds.has(project.id)}
+                        onChange={(s) => setProjectSaved(project.id, s)}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
             );
           })}
 

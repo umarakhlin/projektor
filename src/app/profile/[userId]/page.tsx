@@ -10,6 +10,7 @@ type PublicProfile = {
   id: string;
   name: string | null;
   email?: string;
+  avatarUrl?: string;
   skills: string[];
   links: { url: string; label?: string }[];
   availability: string | null;
@@ -46,12 +47,30 @@ export default function PublicProfilePage() {
     );
   }
 
+  const isPhotoLink = (url: string, label?: string) =>
+    /^data:image\//.test(url) ||
+    /\.(png|jpe?g|gif|webp|svg)(\?.*)?$/i.test(url) ||
+    (label ?? "").toLowerCase().includes("photo");
+
   return (
     <div className="mx-auto max-w-lg">
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">
-          {profile.name || "Profile"}
-        </h1>
+        <div className="flex items-center gap-3">
+          {profile.avatarUrl ? (
+            <img
+              src={profile.avatarUrl}
+              alt={profile.name || "Profile photo"}
+              className="h-12 w-12 rounded-full border border-slate-700 object-cover"
+            />
+          ) : (
+            <div className="flex h-12 w-12 items-center justify-center rounded-full border border-slate-700 bg-slate-800 text-sm font-medium text-slate-300">
+              {(profile.name?.[0] || "U").toUpperCase()}
+            </div>
+          )}
+          <h1 className="text-2xl font-semibold">
+            {profile.name || "Profile"}
+          </h1>
+        </div>
         {session?.user?.id && profile.id && session.user.id !== profile.id && (
           <ReportButton targetType="User" targetId={profile.id} />
         )}
@@ -87,14 +106,30 @@ export default function PublicProfilePage() {
             <ul className="mt-1 space-y-1">
               {profile.links.map((link, i) => (
                 <li key={i}>
-                  <a
-                    href={link.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-brand hover:underline"
-                  >
-                    {link.label || link.url}
-                  </a>
+                  {isPhotoLink(link.url, link.label) ? (
+                    <a
+                      href={link.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 text-brand hover:underline"
+                    >
+                      <img
+                        src={link.url}
+                        alt={link.label || "Photo link"}
+                        className="h-8 w-8 rounded border border-slate-700 object-cover"
+                      />
+                      <span>{link.label || "Photo"}</span>
+                    </a>
+                  ) : (
+                    <a
+                      href={link.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-brand hover:underline"
+                    >
+                      {link.label || link.url}
+                    </a>
+                  )}
                 </li>
               ))}
             </ul>

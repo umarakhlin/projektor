@@ -4,6 +4,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { parseJsonArray } from "@/lib/safe-json";
 
 type Role = {
   id: string;
@@ -141,9 +142,9 @@ export default function ApplyPage() {
     );
   }
 
-  const requirements = role.requirements
-    ? (JSON.parse(role.requirements) as string[])
-    : [];
+  const requirements = parseJsonArray<unknown>(role.requirements)
+    .map((item) => (typeof item === "string" ? item.trim() : ""))
+    .filter(Boolean);
 
   return (
     <div className="mx-auto max-w-lg">

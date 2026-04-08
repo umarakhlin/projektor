@@ -1,8 +1,9 @@
 "use client";
 
 import { useParams, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { parseJsonArray } from "@/lib/safe-json";
 
 type Application = {
   id: string;
@@ -31,26 +32,51 @@ export default function ProjectApplicationsPage() {
   const [byRole, setByRole] = useState<Group[]>([]);
   const [loading, setLoading] = useState(true);
   const [acting, setActing] = useState<string | null>(null);
-  const [accessDenied, setAccessDenied] = useState(false);
+  const [errorState, setErrorState] = useState<"auth" | "forbidden" | "server" | null>(null);
 
-  useEffect(() => {
-    setAccessDenied(false);
+  function getApplicationLinkUrls(rawLinks: string | null): string[] {
+    const parsed = parseJsonArray<{ url?: unknown }>(rawLinks);
+    const sanitized = parsed.flatMap((item) => {
+      const trimmed = typeof item?.url === "string" ? item.url.trim() : "";
+      if (!trimmed) return [];
+      try {
+        const parsedUrl = new URL(trimmed);
+        if (parsedUrl.protocol !== "http:" && parsedUrl.protocol !== "https:") return [];
+        return [parsedUrl.toString()];
+      } catch {
+        return [];
+      }
+    });
+    return Array.from(new Set(sanitized));
+  }
+
+  const loadData = useCallback(() => {
+    setErrorState(null);
+    setLoading(true);
     fetch(`/api/projects/${projectId}/applications`)
       .then((res) => {
-        if (res.status === 403) {
-          setAccessDenied(true);
-          return { project: null, byRole: [] };
-        }
-        if (!res.ok) return Promise.reject(res);
+        if (res.status === 401) throw new Error("AUTH_401");
+        if (res.status === 403) throw new Error("AUTH_403");
+        if (res.status >= 500) throw new Error("SERVER_5XX");
+        if (!res.ok) throw new Error("NETWORK_ERROR");
         return res.json();
       })
       .then((data) => {
         setProject(data.project);
         setByRole(data.byRole ?? []);
       })
-      .catch(() => router.push("/"))
+      .catch((e: unknown) => {
+        const message = e instanceof Error ? e.message : "";
+        if (message === "AUTH_401") setErrorState("auth");
+        else if (message === "AUTH_403") setErrorState("forbidden");
+        else setErrorState("server");
+      })
       .finally(() => setLoading(false));
-  }, [projectId, router]);
+  }, [projectId]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   async function reject(appId: string) {
     setActing(appId);
@@ -82,13 +108,39 @@ export default function ProjectApplicationsPage() {
     return <div className="mx-auto max-w-2xl text-slate-400">Loading…</div>;
   }
 
-  if (accessDenied) {
+  if (errorState === "auth") {
+    return (
+      <div className="mx-auto max-w-2xl">
+        <p className="text-amber-400">Please sign in to view project applications.</p>
+        <Link href={`/auth/signin?callbackUrl=/projects/${projectId}/applications`} className="mt-4 block text-brand hover:underline">
+          Sign in
+        </Link>
+      </div>
+    );
+  }
+
+  if (errorState === "forbidden") {
     return (
       <div className="mx-auto max-w-2xl">
         <p className="text-amber-400">
           Only the project owner can view applications. Make sure you are signed in with the account that created this project.
         </p>
         <Link href="/" className="mt-4 block text-brand hover:underline">← Back to feed</Link>
+      </div>
+    );
+  }
+
+  if (errorState === "server") {
+    return (
+      <div className="mx-auto max-w-2xl">
+        <p className="text-amber-400">We couldn&apos;t load applications. Please try again.</p>
+        <button
+          type="button"
+          onClick={loadData}
+          className="mt-4 rounded-lg border border-slate-600 px-3 py-1.5 text-sm text-slate-300 hover:border-slate-500 hover:text-slate-100"
+        >
+          Retry
+        </button>
       </div>
     );
   }
@@ -113,11 +165,13 @@ export default function ProjectApplicationsPage() {
             <div key={group.role.id}>
               <h2 className="mb-3 font-medium">{group.role.title}</h2>
               <div className="space-y-4">
-                {group.applications.map((app) => (
-                  <div
-                    key={app.id}
-                    className="rounded-lg border border-slate-700 bg-slate-900/50 p-4"
-                  >
+                {group.applications.map((app) => {
+                  const linkUrls = getApplicationLinkUrls(app.links);
+                  return (
+                    <div
+                      key={app.id}
+                      className="rounded-lg border border-slate-700 bg-slate-900/50 p-4"
+                    >
                     <div className="mb-2 flex items-center justify-between">
                       <Link
                         href={`/profile/${app.applicant.id}`}
@@ -147,9 +201,9 @@ export default function ProjectApplicationsPage() {
                         Availability: {app.availability}
                       </p>
                     )}
-                    {app.links && (
+                    {linkUrls.length > 0 && (
                       <p className="mb-2 text-xs text-slate-500">
-                        Links: {(JSON.parse(app.links) as { url: string }[]).map((l) => l.url).join(", ")}
+                        Links: {linkUrls.join(", ")}
                       </p>
                     )}
                     {(app.status === "Applied" || app.status === "InReview") && (
@@ -170,8 +224,9 @@ export default function ProjectApplicationsPage() {
                         </button>
                       </div>
                     )}
-                  </div>
-                ))}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           ))}

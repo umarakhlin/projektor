@@ -135,15 +135,38 @@ For client components, either use a small `safeParse` helper that returns a fall
 
 ---
 
-## 8. Checklist of recommended next steps
+## 8. Checklist of recommended next steps (status update)
 
-1. **Safe JSON:** Replace remaining raw `JSON.parse` in explore, create, apply, and applications pages (client or API) with safe parse or pre-validated API responses.
-2. **Profile/skills/links:** Add max lengths and array size limits for profile PATCH.
-3. **Reports:** Optionally validate `targetId` (project or user exists).
-4. **Rate limiting:** Plan Redis (or similar) for production.
-5. **NEXTAUTH_URL:** Document and verify in deployment (e.g. production URL and port).
-6. **Tests:** Add a few API and/or integration tests for critical paths.
-7. **Error UX:** On 401/403/5xx from key APIs, show a clear message or redirect instead of silently falling back to empty data.
+- [x] **Safe JSON**
+  Raw DB JSON parsing in explore/apply/applications/create paths was hardened with `parseJsonArray` and related helpers.  
+  Note: one `JSON.parse` remains in `app/create/page.tsx` for local draft restore (`localStorage`), not DB payload parsing.
+- [x] **Profile/skills/links validation limits**
+  `api/profile/route.ts` now enforces practical limits and sanitization (array caps, item length checks, URL/protocol validation, trimmed strings).
+- [x] **Reports target validation**
+  `api/reports/route.ts` now verifies that `targetId` exists for `Project`/`User` and returns `404` when missing.
+- [~] **Rate limiting (production backing store)**
+  Redis-backed rate limiting is now implemented in `lib/rate-limit.ts` with in-memory fallback.  
+  Remaining: set `REDIS_URL` in production to activate shared cross-instance limits.
+- [~] **NEXTAUTH_URL deployment hardening**
+  Improved: env validation exists (`lib/auth-env.ts`) and release docs mention exact origin matching.  
+  Remaining: verify the deployed environment uses the exact production origin.
+- [x] **Tests**
+  Added coverage now includes API tests (e.g. applications/offers/memberships) and core library tests (rate-limit, project-validation, auth env/callback).
+- [x] **Error UX for key API failures**
+  Key feed surfaces now show explicit error messaging for auth/server fetch failures instead of silently rendering empty states.
+
+---
+
+## 9. Weekly closure plan (remaining production items)
+
+- **Week 1 — Deployment sanity**
+  Verify production `NEXTAUTH_URL` exactly matches the real app origin (protocol + host + port/subdomain) and run a full sign-in/sign-out flow check.
+- **Week 2 — Shared rate limits**
+  Replace in-memory limiter with a Redis-backed implementation (or add Redis primary + memory fallback), then load-test auth/project/report endpoints.
+- **Week 3 — Regression tests**
+  Add tests for profile PATCH validation limits and reports target-existence checks to keep the new hardening stable.
+- **Week 4 — UX polish**
+  Expand explicit 401/403/5xx messaging patterns to additional non-critical pages and add lightweight retry affordances where appropriate.
 
 ---
 

@@ -11,7 +11,7 @@ export async function POST(req: Request) {
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const { ok } = rateLimit(getRateLimitKey(session.user.id, "apply"), 10, 15 * 60_000);
+  const { ok } = await rateLimit(getRateLimitKey(session.user.id, "apply"), 10, 15 * 60_000);
   if (!ok) {
     return NextResponse.json(
       { error: "Too many applications. Try again later." },
@@ -19,7 +19,17 @@ export async function POST(req: Request) {
     );
   }
 
-  const body = await req.json();
+  let body: {
+    roleId?: string;
+    message?: string;
+    links?: unknown;
+    availability?: string;
+  };
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+  }
   const { roleId, message, links, availability } = body;
 
   if (!roleId) {

@@ -14,7 +14,13 @@ export async function GET(
     where: { id },
     include: {
       owner: { select: { id: true, name: true, email: true } },
-      roles: true
+      roles: true,
+      memberships: {
+        include: {
+          user: { select: { id: true, name: true } },
+          role: { select: { title: true } }
+        }
+      }
     }
   });
 

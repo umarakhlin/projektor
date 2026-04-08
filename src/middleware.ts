@@ -9,7 +9,9 @@ export const config = {
   matcher: [
     "/create/:path*",
     "/my-projects/:path*",
+    "/saved",
     "/inbox/:path*",
+    "/team-space",
     "/profile/:path*",
     "/admin/:path*",
     "/projects/:id/space"

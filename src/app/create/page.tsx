@@ -1,10 +1,16 @@
 "use client";
 
 import { useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import type { ProjectInput, RoleInput, RewardModel } from "@/lib/project-validation";
+import {
+  FEED_ROLE_TITLE_OPTIONS,
+  isFeedRoleTitleValue,
+  normalizeToFeedRoleTitle
+} from "@/lib/feed-role-titles";
+import { parseJsonArray } from "@/lib/safe-json";
 
 const STAGES = [
   { value: "Idea", label: "Idea" },
@@ -32,10 +38,76 @@ const REWARD_TYPES = [
 
 type ProjectStage = (typeof STAGES)[number]["value"];
 type ProjectCategory = (typeof CATEGORIES)[number]["value"];
+const CREATE_DRAFT_KEY = "projektor.create.draft.v1";
 
-export default function CreateProjectPage() {
-  const { data: session, status } = useSession();
+type ApiDraftProject = {
+  id: string;
+  status: string;
+  title: string;
+  pitch: string | null;
+  problem: string | null;
+  solution: string | null;
+  stage: string;
+  category: string;
+  hoursPerWeek: number | null;
+  durationMonths: number | null;
+  rewardModels: string | null;
+  roles: {
+    title: string;
+    requirements: string | null;
+    openings: number;
+    timeExpectation?: string | null;
+  }[];
+};
+
+function normalizedRewardModelItems(raw: string | null) {
+  return parseJsonArray<unknown>(raw ?? null)
+    .map((item) => {
+      if (item == null || typeof item !== "object") return null;
+      const type = (item as { type?: unknown }).type;
+      if (typeof type !== "string") return null;
+      const normalizedType = type.trim();
+      return normalizedType ? { type: normalizedType } : null;
+    })
+    .filter((item): item is { type: string } => item !== null);
+}
+
+/** Skills: one per line (best), or comma-separated. Multi-word skills like "User research" are OK. */
+function parseSkillsFromInput(raw: string): string[] {
+  const lines = raw.split("\n");
+  const out: string[] = [];
+  for (const line of lines) {
+    for (const part of line.split(",")) {
+      const s = part.trim();
+      if (s) out.push(s);
+    }
+  }
+  return out;
+}
+
+function inferResumeStep(p: ApiDraftProject): number {
+  const rewards = normalizedRewardModelItems(p.rewardModels);
+  const hasPitch = !!(
+    p.title?.trim() &&
+    (p.pitch?.trim() || p.problem?.trim() || p.solution?.trim())
+  );
+  if (!hasPitch) return 1;
+  const hasExpectations =
+    typeof p.hoursPerWeek === "number" &&
+    p.hoursPerWeek > 0 &&
+    typeof p.durationMonths === "number" &&
+    p.durationMonths > 0 &&
+    rewards.length > 0;
+  if (!hasExpectations) return 2;
+  const validRoles = (p.roles ?? []).filter((r) => r.title?.trim());
+  if (validRoles.length === 0) return 3;
+  return 4;
+}
+
+function CreateProjectPageInner() {
+  const { status } = useSession();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [step, setStep] = useState(1);
   const [projectId, setProjectId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -65,6 +137,8 @@ export default function CreateProjectPage() {
 
   const [aiAvailable, setAiAvailable] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
+  const [draftLoaded, setDraftLoaded] = useState(false);
+  const [hydratingDraft, setHydratingDraft] = useState(false);
 
   useEffect(() => {
     fetch("/api/ai/status")
@@ -72,6 +146,156 @@ export default function CreateProjectPage() {
       .then((d: { available?: boolean }) => setAiAvailable(!!d?.available))
       .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (status !== "authenticated" || draftLoaded) return;
+
+    const draftId = searchParams.get("draft");
+    if (draftId) {
+      setHydratingDraft(true);
+      fetch(`/api/projects/${draftId}`)
+        .then(async (res) => {
+          if (res.status === 403 || res.status === 404) {
+            setError("Could not load this draft. It may have been removed.");
+            return;
+          }
+          if (!res.ok) {
+            setError("Could not load draft.");
+            return;
+          }
+          const p = (await res.json()) as ApiDraftProject;
+          if (p.status !== "Draft") {
+            setError("This project is not a draft.");
+            return;
+          }
+          setProjectId(p.id);
+          setTitle(p.title ?? "");
+          setPitch(p.pitch ?? "");
+          setProblem(p.problem ?? "");
+          setSolution(p.solution ?? "");
+          if (p.stage && STAGES.some((s) => s.value === p.stage)) {
+            setStage(p.stage as ProjectStage);
+          }
+          if (p.category && CATEGORIES.some((c) => c.value === p.category)) {
+            setCategory(p.category as ProjectCategory);
+          }
+          if (typeof p.hoursPerWeek === "number") {
+            setHoursPerWeek(p.hoursPerWeek);
+          } else {
+            setHoursPerWeek("");
+          }
+          if (typeof p.durationMonths === "number") {
+            setDurationMonths(p.durationMonths);
+          } else {
+            setDurationMonths("");
+          }
+          const rewardItems = normalizedRewardModelItems(p.rewardModels);
+          setRewardModels(
+            rewardItems.map((item) => ({ type: item.type as RewardModel["type"] }))
+          );
+          const roleRows: RoleInput[] =
+            Array.isArray(p.roles) && p.roles.length > 0
+              ? p.roles.map((r) => {
+                  const rawTitle = r.title ?? "";
+                  const title = isFeedRoleTitleValue(rawTitle)
+                    ? rawTitle
+                    : normalizeToFeedRoleTitle(rawTitle);
+                  return {
+                    title,
+                    requirements: parseJsonArray<unknown>(r.requirements ?? null)
+                      .map((x) => (typeof x === "string" ? x.trim() : ""))
+                      .filter(Boolean),
+                    openings: Math.max(1, r.openings ?? 1),
+                    ...(r.timeExpectation?.trim()
+                      ? { timeExpectation: r.timeExpectation.trim() }
+                      : {})
+                  };
+                })
+              : [{ title: "", requirements: [], openings: 1 }];
+          setRoles(roleRows);
+          setStep(inferResumeStep(p));
+          router.replace("/create");
+        })
+        .catch(() => setError("Could not load draft."))
+        .finally(() => {
+          setHydratingDraft(false);
+          setDraftLoaded(true);
+        });
+      return;
+    }
+
+    try {
+      const raw = window.localStorage.getItem(CREATE_DRAFT_KEY);
+      if (!raw) {
+        setDraftLoaded(true);
+        return;
+      }
+      const d = JSON.parse(raw) as Partial<{
+        step: number;
+        projectId: string | null;
+        title: string;
+        pitch: string;
+        problem: string;
+        solution: string;
+        stage: ProjectStage;
+        category: ProjectCategory;
+        hoursPerWeek: number | "";
+        durationMonths: number | "";
+        rewardModels: RewardModel[];
+        roles: RoleInput[];
+      }>;
+      if (typeof d.step === "number" && d.step >= 1 && d.step <= 4) setStep(d.step);
+      if (typeof d.projectId === "string" || d.projectId === null) setProjectId(d.projectId ?? null);
+      if (typeof d.title === "string") setTitle(d.title);
+      if (typeof d.pitch === "string") setPitch(d.pitch);
+      if (typeof d.problem === "string") setProblem(d.problem);
+      if (typeof d.solution === "string") setSolution(d.solution);
+      if (d.stage && STAGES.some((s) => s.value === d.stage)) setStage(d.stage);
+      if (d.category && CATEGORIES.some((c) => c.value === d.category)) setCategory(d.category);
+      if (typeof d.hoursPerWeek === "number" || d.hoursPerWeek === "") setHoursPerWeek(d.hoursPerWeek);
+      if (typeof d.durationMonths === "number" || d.durationMonths === "") setDurationMonths(d.durationMonths);
+      if (Array.isArray(d.rewardModels)) setRewardModels(d.rewardModels);
+      if (Array.isArray(d.roles) && d.roles.length > 0) setRoles(d.roles);
+    } catch {
+      // Ignore broken local draft payload.
+    } finally {
+      setDraftLoaded(true);
+    }
+  }, [status, draftLoaded, searchParams, router]);
+
+  useEffect(() => {
+    if (status !== "authenticated" || !draftLoaded) return;
+    const draft = {
+      step,
+      projectId,
+      title,
+      pitch,
+      problem,
+      solution,
+      stage,
+      category,
+      hoursPerWeek,
+      durationMonths,
+      rewardModels,
+      roles
+    };
+    window.localStorage.setItem(CREATE_DRAFT_KEY, JSON.stringify(draft));
+  }, [
+    status,
+    draftLoaded,
+    step,
+    projectId,
+    title,
+    pitch,
+    problem,
+    solution,
+    stage,
+    category,
+    hoursPerWeek,
+    durationMonths,
+    rewardModels,
+    roles
+  ]);
 
   async function improveWithAi() {
     if (!pitch && !problem && !solution) return;
@@ -104,9 +328,14 @@ export default function CreateProjectPage() {
     });
     const data = await res.json().catch(() => ({}));
     if (data.roles?.length) {
-      setRoles((prev) => [...prev, ...data.roles.map((r: { title: string; requirements: string[]; openings?: number }) =>
-        ({ title: r.title, requirements: r.requirements ?? [], openings: r.openings ?? 1 })
-      )]);
+      setRoles((prev) => [
+        ...prev,
+        ...data.roles.map((r: { title: string; requirements: string[]; openings?: number }) => ({
+          title: normalizeToFeedRoleTitle(r.title ?? ""),
+          requirements: r.requirements ?? [],
+          openings: r.openings ?? 1
+        }))
+      ]);
     }
     setAiLoading(false);
   }
@@ -218,6 +447,7 @@ export default function CreateProjectPage() {
           if (d.checklist) setChecklist(d.checklist);
           throw new Error(d.error ?? "Cannot publish");
         }
+        window.localStorage.removeItem(CREATE_DRAFT_KEY);
         router.push(`/projects/${projectId}`);
         router.refresh();
         return;
@@ -236,6 +466,15 @@ export default function CreateProjectPage() {
     const res = await fetch(`/api/projects/${projectId}`);
     if (!res.ok) return;
     const p = await res.json();
+    const rewardModels = parseJsonArray<unknown>(p.rewardModels)
+      .map((item) => {
+        if (item == null || typeof item !== "object") return null;
+        const type = (item as { type?: unknown }).type;
+        if (typeof type !== "string") return null;
+        const normalizedType = type.trim();
+        return normalizedType ? { type: normalizedType } : null;
+      })
+      .filter((item): item is { type: string } => item !== null);
     const c = {
       pitch: !!(p.title && (p.pitch || p.problem || p.solution)),
       expectations:
@@ -243,8 +482,7 @@ export default function CreateProjectPage() {
         p.hoursPerWeek > 0 &&
         typeof p.durationMonths === "number" &&
         p.durationMonths > 0,
-      rewardModel:
-        !!p.rewardModels && JSON.parse(p.rewardModels || "[]").length > 0,
+      rewardModel: rewardModels.length > 0,
       roles:
         Array.isArray(p.roles) &&
         p.roles.length > 0 &&
@@ -259,7 +497,7 @@ export default function CreateProjectPage() {
 
   const canPublish = checklist?.pitch && checklist?.expectations && checklist?.rewardModel && checklist?.roles;
 
-  if (status === "loading") {
+  if (status === "loading" || !draftLoaded || hydratingDraft) {
     return <div className="mx-auto max-w-xl text-slate-400">Loading…</div>;
   }
 
@@ -270,6 +508,9 @@ export default function CreateProjectPage() {
   return (
     <div className="mx-auto max-w-xl">
       <h1 className="mb-6 text-2xl font-semibold">Create project</h1>
+      <p className="mb-4 text-sm text-slate-400">
+        Your progress is saved as draft. You can publish later from My Projects.
+      </p>
       <div className="mb-6 flex gap-2">
         {[1, 2, 3, 4].map((s) => (
           <div
@@ -429,9 +670,12 @@ export default function CreateProjectPage() {
 
       {step === 3 && (
         <div className="flex flex-col gap-6">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-4">
             <p className="text-sm text-slate-400">
-              Add the roles you need. Each role should have a title and number of openings.
+              For each role: pick the type (matches Explore filters), set{" "}
+              <strong className="font-medium text-slate-300">how many people</strong> you need,
+              then list skills — <strong className="font-medium text-slate-300">one per line</strong>{" "}
+              (or comma-separated). Spaces inside a skill are fine (e.g. “React Native”).
             </p>
             {aiAvailable && title.trim() && (
               <button
@@ -459,37 +703,89 @@ export default function CreateProjectPage() {
                   Remove
                 </button>
               </div>
-              <div className="flex flex-col gap-3">
-                <input
-                  type="text"
-                  value={role.title}
-                  onChange={(e) => updateRole(i, "title", e.target.value)}
-                  placeholder="Role title (e.g. Frontend Developer)"
-                  className="rounded-lg border border-slate-700 bg-slate-900 px-4 py-2 text-slate-50 placeholder:text-slate-500 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
-                />
-                <input
-                  type="number"
-                  min={1}
-                  value={role.openings}
-                  onChange={(e) =>
-                    updateRole(i, "openings", parseInt(e.target.value, 10) || 1)
-                  }
-                  placeholder="Openings"
-                  className="rounded-lg border border-slate-700 bg-slate-900 px-4 py-2 text-slate-50 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
-                />
-                <input
-                  type="text"
-                  value={(role.requirements ?? []).join(", ")}
-                  onChange={(e) =>
-                    updateRole(
-                      i,
-                      "requirements",
-                      e.target.value.split(",").map((s) => s.trim()).filter(Boolean)
-                    )
-                  }
-                  placeholder="Skills (comma-separated)"
-                  className="rounded-lg border border-slate-700 bg-slate-900 px-4 py-2 text-slate-50 placeholder:text-slate-500 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
-                />
+              <div className="flex flex-col gap-4">
+                <label className="flex flex-col gap-1.5">
+                  <span className="text-sm font-medium text-slate-300">Role type</span>
+                  <span className="text-xs text-slate-500">
+                    Same categories people use when browsing the feed.
+                  </span>
+                  <select
+                    value={role.title}
+                    onChange={(e) => updateRole(i, "title", e.target.value)}
+                    className="rounded-lg border border-slate-700 bg-slate-900 px-4 py-2.5 text-slate-50 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
+                  >
+                    <option value="">Choose a role…</option>
+                    {FEED_ROLE_TITLE_OPTIONS.map((o) => (
+                      <option key={o.value} value={o.value}>
+                        {o.label}
+                      </option>
+                    ))}
+                    {role.title.trim() && !isFeedRoleTitleValue(role.title) ? (
+                      <option value={role.title}>{role.title} (update to a standard role)</option>
+                    ) : null}
+                  </select>
+                </label>
+                <label className="flex flex-col gap-1.5">
+                  <span className="text-sm font-medium text-slate-300">
+                    Spots / headcount for this role
+                  </span>
+                  <span className="text-xs text-slate-500">
+                    Use the arrows or type a number — how many people for this role (minimum 1).
+                  </span>
+                  <div className="flex w-fit max-w-full items-stretch gap-0 overflow-hidden rounded-lg border border-slate-700 bg-slate-900">
+                    <input
+                      type="number"
+                      min={1}
+                      step={1}
+                      inputMode="numeric"
+                      aria-label="Number of people for this role"
+                      value={role.openings}
+                      onChange={(e) =>
+                        updateRole(i, "openings", Math.max(1, parseInt(e.target.value, 10) || 1))
+                      }
+                      className="w-16 min-w-0 border-0 bg-transparent py-2.5 pl-3 pr-2 text-center text-slate-50 focus:outline-none focus:ring-1 focus:ring-inset focus:ring-brand [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                    />
+                    <div className="flex flex-col border-l border-slate-700">
+                      <button
+                        type="button"
+                        aria-label="Increase headcount"
+                        className="flex flex-1 items-center justify-center px-2.5 text-xs text-slate-300 hover:bg-slate-800 active:bg-slate-800/80"
+                        onClick={() =>
+                          updateRole(i, "openings", Math.max(1, (role.openings ?? 1) + 1))
+                        }
+                      >
+                        ▲
+                      </button>
+                      <button
+                        type="button"
+                        aria-label="Decrease headcount"
+                        className="flex flex-1 items-center justify-center border-t border-slate-700 px-2.5 text-xs text-slate-300 hover:bg-slate-800 active:bg-slate-800/80 disabled:opacity-40"
+                        disabled={(role.openings ?? 1) <= 1}
+                        onClick={() =>
+                          updateRole(i, "openings", Math.max(1, (role.openings ?? 1) - 1))
+                        }
+                      >
+                        ▼
+                      </button>
+                    </div>
+                  </div>
+                </label>
+                <label className="flex flex-col gap-1.5">
+                  <span className="text-sm font-medium text-slate-300">Skills (optional)</span>
+                  <span className="text-xs text-slate-500">
+                    Put each skill on its own line. You can also use commas on one line. Multi-word
+                    skills are OK.
+                  </span>
+                  <textarea
+                    rows={4}
+                    value={(role.requirements ?? []).join("\n")}
+                    onChange={(e) =>
+                      updateRole(i, "requirements", parseSkillsFromInput(e.target.value))
+                    }
+                    placeholder={`e.g.\nReact\nTypeScript\nUser research`}
+                    className="resize-y rounded-lg border border-slate-700 bg-slate-900 px-4 py-3 text-slate-50 placeholder:text-slate-600 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
+                  />
+                </label>
               </div>
             </div>
           ))}
@@ -567,5 +863,15 @@ export default function CreateProjectPage() {
         </button>
       </div>
     </div>
+  );
+}
+
+export default function CreateProjectPage() {
+  return (
+    <Suspense
+      fallback={<div className="mx-auto max-w-xl text-slate-400">Loading…</div>}
+    >
+      <CreateProjectPageInner />
+    </Suspense>
   );
 }

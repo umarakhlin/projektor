@@ -8,6 +8,7 @@ export async function GET(req: NextRequest) {
   const offset = parseInt(searchParams.get("offset") ?? "0", 10) || 0;
   const stage = searchParams.get("stage");
   const category = searchParams.get("category");
+  const roleType = searchParams.get("roleType");
 
   const where: Record<string, unknown> = {
     status: { in: [ProjectStatus.Recruiting, ProjectStatus.Active] }
@@ -15,6 +16,14 @@ export async function GET(req: NextRequest) {
 
   if (stage) where.stage = stage;
   if (category) where.category = category;
+  if (roleType) {
+    where.roles = {
+      some: {
+        state: { not: RoleState.Filled },
+        title: { contains: roleType }
+      }
+    };
+  }
 
   const [projects, total] = await Promise.all([
     prisma.project.findMany({

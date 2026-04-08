@@ -11,7 +11,7 @@ export async function POST(req: Request) {
   }
 
   const key = getRateLimitKey(session.user.id, "report");
-  const { ok } = rateLimit(key, 10, 60_000); // 10 reports per minute
+  const { ok } = await rateLimit(key, 10, 60_000); // 10 reports per minute
   if (!ok) {
     return NextResponse.json(
       { error: "Too many reports. Please try again later." },
@@ -37,6 +37,24 @@ export async function POST(req: Request) {
     return NextResponse.json(
       { error: "targetType must be Project or User" },
       { status: 400 }
+    );
+  }
+
+  const targetExists =
+    targetType === "Project"
+      ? await prisma.project.findUnique({
+          where: { id: targetId },
+          select: { id: true }
+        })
+      : await prisma.user.findUnique({
+          where: { id: targetId },
+          select: { id: true }
+        });
+
+  if (!targetExists) {
+    return NextResponse.json(
+      { error: `${targetType} not found` },
+      { status: 404 }
     );
   }
 

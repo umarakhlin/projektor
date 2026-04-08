@@ -4,6 +4,7 @@ import { signIn } from "next-auth/react";
 import { useSearchParams } from "next/navigation";
 import { useState, Suspense, useEffect } from "react";
 import Link from "next/link";
+import { resolveAuthCallbackUrl } from "@/lib/auth-callback-url";
 
 function SignInForm() {
   const searchParams = useSearchParams();
@@ -27,7 +28,10 @@ function SignInForm() {
 
     try {
       // redirect: true so NextAuth sets the session cookie via the redirect response
-      const redirectUrl = `${window.location.origin}${callbackPath.startsWith("/") ? callbackPath : `/${callbackPath}`}`;
+      const redirectUrl = resolveAuthCallbackUrl(
+        callbackPath,
+        window.location.origin
+      );
       await signIn("credentials", {
         email: email.trim().toLowerCase(),
         password,

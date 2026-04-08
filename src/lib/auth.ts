@@ -3,6 +3,9 @@ import NextAuth from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { compare } from "bcryptjs";
 import { prisma } from "@/lib/prisma";
+import { validateAuthEnv } from "@/lib/auth-env";
+
+const authSecret = validateAuthEnv();
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -45,6 +48,7 @@ export const authOptions: NextAuthOptions = {
   pages: {
     signIn: "/auth/signin"
   },
+  secret: authSecret,
   session: { strategy: "jwt", maxAge: 30 * 24 * 60 * 60 }
 };
 

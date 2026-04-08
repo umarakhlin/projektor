@@ -2,7 +2,7 @@
 
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 
 type Profile = {
@@ -12,8 +12,23 @@ type Profile = {
   skills: string[];
   links: { url: string; label?: string }[];
   availability: string | null;
-  settings: { showEmail?: boolean };
+  settings: { showEmail?: boolean; avatarUrl?: string };
 };
+
+const SKILL_OPTIONS = [
+  "Frontend",
+  "Backend",
+  "Fullstack",
+  "UI/UX Design",
+  "Product Management",
+  "Marketing",
+  "Sales",
+  "Data Analysis",
+  "AI/ML",
+  "DevOps",
+  "QA Testing",
+  "Mobile"
+] as const;
 
 export default function ProfilePage() {
   const { data: session, status } = useSession();
@@ -23,10 +38,15 @@ export default function ProfilePage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [name, setName] = useState("");
-  const [skillsText, setSkillsText] = useState("");
+  const [skills, setSkills] = useState<string[]>([]);
   const [links, setLinks] = useState<{ url: string; label?: string }[]>([]);
   const [availability, setAvailability] = useState("");
   const [showEmail, setShowEmail] = useState(true);
+  const [avatarUrl, setAvatarUrl] = useState("");
+  const [editingName, setEditingName] = useState(false);
+  const [savedHint, setSavedHint] = useState("");
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const initializedRef = useRef(false);
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -40,10 +60,12 @@ export default function ProfilePage() {
       .then((data: Profile) => {
         setProfile(data);
         setName(data.name ?? "");
-        setSkillsText(data.skills?.join(", ") ?? "");
-        setLinks(data.links?.length ? data.links : [{ url: "", label: "" }]);
+        setSkills(Array.isArray(data.skills) ? data.skills : []);
+        setLinks(data.links?.length ? data.links : []);
         setAvailability(data.availability ?? "");
         setShowEmail(data.settings?.showEmail ?? true);
+        setAvatarUrl(data.settings?.avatarUrl ?? "");
+        initializedRef.current = true;
       })
       .catch(() => setError("Failed to load profile"))
       .finally(() => setLoading(false));
@@ -55,10 +77,6 @@ export default function ProfilePage() {
     setError("");
     setSaving(true);
 
-    const skills = skillsText
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean);
     const validLinks = links
       .filter((l) => l.url.trim())
       .map((l) => ({ url: l.url.trim(), label: l.label?.trim() || undefined }));
@@ -71,7 +89,7 @@ export default function ProfilePage() {
         skills,
         links: validLinks,
         availability: availability || null,
-        settings: { showEmail }
+        settings: { showEmail, avatarUrl: avatarUrl.trim() || undefined }
       })
     });
 
@@ -92,6 +110,10 @@ export default function ProfilePage() {
     setLinks((prev) => [...prev, { url: "", label: "" }]);
   }
 
+  function addPhotoLink() {
+    setLinks((prev) => [...prev, { url: "", label: "Photo" }]);
+  }
+
   function removeLink(i: number) {
     setLinks((prev) => prev.filter((_, idx) => idx !== i));
   }
@@ -103,6 +125,52 @@ export default function ProfilePage() {
       return next;
     });
   }
+
+  function toggleSkill(skill: string) {
+    setSkills((prev) =>
+      prev.includes(skill) ? prev.filter((s) => s !== skill) : [...prev, skill]
+    );
+  }
+
+  function handleAvatarFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setError("Please choose an image file.");
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      setError("Image is too large. Please use up to 2MB.");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === "string") {
+        setError("");
+        setAvatarUrl(reader.result);
+      }
+    };
+    reader.readAsDataURL(file);
+  }
+
+  useEffect(() => {
+    if (!initializedRef.current || !profile) return;
+    const timeout = setTimeout(async () => {
+      const res = await fetch("/api/profile", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: name || null,
+          settings: { avatarUrl: avatarUrl.trim() || undefined }
+        })
+      });
+      if (res.ok) {
+        setSavedHint("Saved");
+        setTimeout(() => setSavedHint(""), 1200);
+      }
+    }, 500);
+    return () => clearTimeout(timeout);
+  }, [name, avatarUrl, profile]);
 
   if (status === "loading" || loading) {
     return (
@@ -129,7 +197,68 @@ export default function ProfilePage() {
 
   return (
     <div className="mx-auto max-w-lg">
-      <h1 className="mb-6 text-2xl font-semibold">Profile</h1>
+      <div className="mb-6 flex items-center gap-3">
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          onChange={handleAvatarFileChange}
+          className="hidden"
+        />
+        {avatarUrl.trim() ? (
+          <img
+            src={avatarUrl}
+            alt="Profile"
+            className="h-12 w-12 rounded-full border border-slate-700 object-cover"
+          />
+        ) : (
+          <div className="flex h-12 w-12 items-center justify-center rounded-full border border-slate-700 bg-slate-800 text-sm font-medium text-slate-300">
+            {(name?.[0] || profile.email?.[0] || "U").toUpperCase()}
+          </div>
+        )}
+        <div>
+          {editingName ? (
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Username"
+                className="rounded-md border border-slate-700 bg-slate-900 px-3 py-1.5 text-base text-slate-50 placeholder:text-slate-500 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
+              />
+              <button
+                type="button"
+                onClick={() => setEditingName(false)}
+                className="text-sm text-brand hover:underline"
+              >
+                Done
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              <h1 className="text-2xl font-semibold">
+                {name || profile.email?.split("@")[0] || "Username"}
+              </h1>
+              <button
+                type="button"
+                onClick={() => setEditingName(true)}
+                className="text-sm text-brand hover:underline"
+                aria-label="Edit username"
+                title="Edit username"
+              >
+                ✎
+              </button>
+            </div>
+          )}
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            className="mt-1 text-sm text-brand hover:underline"
+          >
+            Change profile picture
+          </button>
+        </div>
+      </div>
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-6">
         {error && (
@@ -137,28 +266,34 @@ export default function ProfilePage() {
             {error}
           </div>
         )}
+        {savedHint && (
+          <div className="rounded-lg bg-green-500/20 px-4 py-2 text-sm text-green-300">
+            {savedHint}
+          </div>
+        )}
 
-        <label className="flex flex-col gap-1">
-          <span className="text-sm text-slate-400">Name</span>
-          <input
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Your name"
-            className="rounded-lg border border-slate-700 bg-slate-900 px-4 py-2 text-slate-50 placeholder:text-slate-500 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
-          />
-        </label>
-
-        <label className="flex flex-col gap-1">
-          <span className="text-sm text-slate-400">Skills (comma-separated)</span>
-          <input
-            type="text"
-            value={skillsText}
-            onChange={(e) => setSkillsText(e.target.value)}
-            placeholder="React, TypeScript, Design"
-            className="rounded-lg border border-slate-700 bg-slate-900 px-4 py-2 text-slate-50 placeholder:text-slate-500 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
-          />
-        </label>
+        <div className="flex flex-col gap-2">
+          <span className="text-sm text-slate-400">Skills (choose options)</span>
+          <div className="flex flex-wrap gap-2">
+            {SKILL_OPTIONS.map((skill) => {
+              const selected = skills.includes(skill);
+              return (
+                <button
+                  key={skill}
+                  type="button"
+                  onClick={() => toggleSkill(skill)}
+                  className={`rounded-full border px-3 py-1 text-sm transition ${
+                    selected
+                      ? "border-brand bg-brand/20 text-brand"
+                      : "border-slate-700 bg-slate-900 text-slate-300 hover:border-brand/50"
+                  }`}
+                >
+                  {skill}
+                </button>
+              );
+            })}
+          </div>
+        </div>
 
         <div>
           <span className="block text-sm text-slate-400 mb-2">Links (portfolio, GitHub, etc.)</span>
@@ -169,7 +304,7 @@ export default function ProfilePage() {
                   type="url"
                   value={link.url}
                   onChange={(e) => updateLink(i, "url", e.target.value)}
-                  placeholder="https://..."
+                  placeholder={link.label === "Photo" ? "Photo URL (https://...)" : "https://..."}
                   className="flex-1 rounded-lg border border-slate-700 bg-slate-900 px-4 py-2 text-slate-50 placeholder:text-slate-500 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
                 />
                 <input
@@ -194,6 +329,13 @@ export default function ProfilePage() {
               className="self-start text-sm text-brand hover:underline"
             >
               + Add link
+            </button>
+            <button
+              type="button"
+              onClick={addPhotoLink}
+              className="self-start text-sm text-brand hover:underline"
+            >
+              + Add photo link
             </button>
           </div>
         </div>

@@ -49,7 +49,11 @@ export async function POST(
 
   const { id: projectId } = await params;
   const body = await req.json();
-  const { title, assigneeId } = body as { title?: string; assigneeId?: string };
+  const { title, assigneeId, dueAt } = body as {
+    title?: string;
+    assigneeId?: string;
+    dueAt?: string | null;
+  };
 
   if (!title?.trim()) {
     return NextResponse.json(
@@ -81,6 +85,7 @@ export async function POST(
       creatorId: session.user.id,
       title: title.trim(),
       assigneeId: assigneeId || undefined,
+      dueAt: dueAt ? new Date(dueAt) : null,
       status: "Todo"
     },
     include: {

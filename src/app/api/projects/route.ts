@@ -28,7 +28,7 @@ export async function POST(req: Request) {
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const { ok } = rateLimit(getRateLimitKey(session.user.id, "create_project"), 5, 15 * 60_000);
+  const { ok } = await rateLimit(getRateLimitKey(session.user.id, "create_project"), 5, 15 * 60_000);
   if (!ok) {
     return NextResponse.json(
       { error: "Rate limit exceeded. Try again later." },

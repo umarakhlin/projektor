@@ -1,10 +1,10 @@
-/**
- * Simple in-memory rate limiter for MVP.
- * For production, use Redis or similar.
- */
+import { createClient, type RedisClientType } from "redis";
 
 const store = new Map<string, { count: number; resetAt: number }>();
 const CLEANUP_INTERVAL = 60_000; // 1 min
+const REDIS_KEY_PREFIX = "rate_limit:";
+let redisClient: RedisClientType | null = null;
+let redisConnectPromise: Promise<RedisClientType | null> | null = null;
 
 function cleanup() {
   const now = Date.now();
@@ -14,7 +14,34 @@ function cleanup() {
 }
 setInterval(cleanup, CLEANUP_INTERVAL);
 
-export function rateLimit(
+function getRedisUrl(): string | null {
+  const raw = process.env.REDIS_URL?.trim();
+  return raw ? raw : null;
+}
+
+async function getRedisClient(): Promise<RedisClientType | null> {
+  const url = getRedisUrl();
+  if (!url) return null;
+  if (redisClient?.isOpen) return redisClient;
+  if (redisConnectPromise) return redisConnectPromise;
+
+  const client = createClient({ url });
+  client.on("error", (err) => {
+    console.error("Redis rate-limit error:", err);
+  });
+  redisConnectPromise = client.connect().then(() => {
+    redisClient = client;
+    redisConnectPromise = null;
+    return client;
+  }).catch((err) => {
+    redisConnectPromise = null;
+    console.error("Redis connection failed, using memory rate-limit:", err);
+    return null;
+  });
+  return redisConnectPromise;
+}
+
+function rateLimitMemory(
   key: string,
   limit: number,
   windowMs: number
@@ -38,6 +65,32 @@ export function rateLimit(
 
   entry.count++;
   return { ok: true, remaining: limit - entry.count };
+}
+
+export async function rateLimit(
+  key: string,
+  limit: number,
+  windowMs: number
+): Promise<{ ok: boolean; remaining: number }> {
+  const redis = await getRedisClient();
+  if (!redis) {
+    return rateLimitMemory(key, limit, windowMs);
+  }
+
+  const redisKey = `${REDIS_KEY_PREFIX}${key}`;
+  try {
+    const count = await redis.incr(redisKey);
+    if (count === 1) {
+      await redis.pExpire(redisKey, windowMs);
+    }
+    return {
+      ok: count <= limit,
+      remaining: Math.max(0, limit - count)
+    };
+  } catch (err) {
+    console.error("Redis rate-limit command failed, using memory fallback:", err);
+    return rateLimitMemory(key, limit, windowMs);
+  }
 }
 
 export function getRateLimitKey(identifier: string, action: string): string {

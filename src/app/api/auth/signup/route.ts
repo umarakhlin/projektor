@@ -5,7 +5,7 @@ import { rateLimit, getClientId } from "@/lib/rate-limit";
 
 export async function POST(req: Request) {
   const clientId = getClientId(req);
-  const { ok } = rateLimit(`signup:${clientId}`, 5, 15 * 60_000);
+  const { ok } = await rateLimit(`signup:${clientId}`, 5, 15 * 60_000);
   if (!ok) {
     return NextResponse.json(
       { error: "Too many signup attempts. Try again later." },

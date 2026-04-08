@@ -29,7 +29,10 @@ export async function GET(
 
   const session = await getServerSession(authOptions);
   const isOwnProfile = session?.user?.id === userId;
-  const settings = parseJsonObject<{ showEmail?: boolean }>(user.settings, {});
+  const settings = parseJsonObject<{ showEmail?: boolean; avatarUrl?: string }>(
+    user.settings,
+    {}
+  );
 
   const profile = {
     id: user.id,
@@ -37,6 +40,7 @@ export async function GET(
     skills: parseJsonArray<string>(user.skills),
     links: parseJsonArray<{ url: string; label?: string }>(user.links),
     availability: user.availability,
+    avatarUrl: settings.avatarUrl,
     email: isOwnProfile || settings.showEmail ? user.email : undefined
   };
 
