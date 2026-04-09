@@ -71,7 +71,12 @@ export default function AdminReportsPage() {
 
   return (
     <div className="mx-auto max-w-2xl">
-      <h1 className="mb-6 text-xl font-semibold">Moderation Queue</h1>
+      <div className="mb-6 flex items-center justify-between gap-3">
+        <h1 className="text-xl font-semibold">Moderation Queue</h1>
+        <Link href="/admin/users" className="text-sm text-brand hover:underline">
+          Manage users
+        </Link>
+      </div>
       <Link href="/" className="mb-6 block text-sm text-brand hover:underline">← Back</Link>
 
       {reports.length === 0 ? (

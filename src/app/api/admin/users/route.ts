@@ -9,16 +9,26 @@ export async function GET() {
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-
   if (!isModerator(session.user.email)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const reports = await prisma.report.findMany({
-    where: { status: "Pending" },
-    include: { reporter: { select: { id: true, name: true, email: true } } },
-    orderBy: { createdAt: "desc" }
+  const users = await prisma.user.findMany({
+    orderBy: { createdAt: "desc" },
+    select: {
+      id: true,
+      email: true,
+      name: true,
+      createdAt: true,
+      emailVerifiedAt: true,
+      _count: {
+        select: {
+          projectsOwned: true,
+          applications: true
+        }
+      }
+    }
   });
 
-  return NextResponse.json(reports);
+  return NextResponse.json(users);
 }
