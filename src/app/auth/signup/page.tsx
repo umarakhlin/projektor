@@ -9,6 +9,7 @@ export default function SignUpPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [verificationUrl, setVerificationUrl] = useState<string | null>(null);
+  const [emailSent, setEmailSent] = useState(false);
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -33,6 +34,7 @@ export default function SignUpPage() {
 
     setLoading(false);
     setSuccess(true);
+    setEmailSent(Boolean(data.emailSent));
     setVerificationUrl(typeof data.verificationUrl === "string" ? data.verificationUrl : null);
   }
 
@@ -44,6 +46,11 @@ export default function SignUpPage() {
           <div className="rounded-lg border border-emerald-700/40 bg-emerald-500/10 p-4 text-sm text-emerald-300">
             Your account was created. Verify your email before creating projects.
           </div>
+          <p className="text-sm text-slate-300">
+            {emailSent
+              ? "We sent a verification email to your inbox."
+              : "Email sending is not configured yet, so use the fallback verification link below."}
+          </p>
           {verificationUrl && (
             <a
               href={verificationUrl}
