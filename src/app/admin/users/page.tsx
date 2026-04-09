@@ -18,7 +18,7 @@ type AdminUser = {
 };
 
 export default function AdminUsersPage() {
-  const { status } = useSession();
+  const { data: session, status } = useSession();
   const router = useRouter();
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
@@ -79,6 +79,21 @@ export default function AdminUsersPage() {
     setSavingUserId(null);
   }
 
+  async function deleteUser(user: AdminUser) {
+    if (!window.confirm(`Delete user ${user.email}? This cannot be undone.`)) return;
+    setSavingUserId(user.id);
+    const res = await fetch(`/api/admin/users/${user.id}`, {
+      method: "DELETE"
+    });
+    if (res.ok) {
+      setUsers((prev) => prev.filter((u) => u.id !== user.id));
+    } else {
+      const data = await res.json().catch(() => ({}));
+      alert(data.error ?? "Failed to delete user");
+    }
+    setSavingUserId(null);
+  }
+
   if (status === "loading" || loading) {
     return <div className="mx-auto max-w-4xl text-slate-400">Loading…</div>;
   }
@@ -117,6 +132,8 @@ export default function AdminUsersPage() {
             user={user}
             saving={savingUserId === user.id}
             onSave={saveUser}
+            onDelete={deleteUser}
+            canDelete={session?.user?.id !== user.id}
           />
         ))}
       </div>
@@ -127,11 +144,15 @@ export default function AdminUsersPage() {
 function UserRow({
   user,
   saving,
-  onSave
+  onSave,
+  onDelete,
+  canDelete
 }: {
   user: AdminUser;
   saving: boolean;
   onSave: (user: AdminUser, next: { name: string; emailVerified: boolean }) => Promise<void>;
+  onDelete: (user: AdminUser) => Promise<void>;
+  canDelete: boolean;
 }) {
   const [name, setName] = useState(user.name ?? "");
   const [emailVerified, setEmailVerified] = useState(Boolean(user.emailVerifiedAt));
@@ -177,6 +198,14 @@ function UserRow({
           className="rounded-lg bg-brand px-3 py-2 text-sm font-medium text-white hover:bg-brand-light disabled:opacity-50"
         >
           {saving ? "Saving..." : "Save"}
+        </button>
+        <button
+          disabled={saving || !canDelete}
+          onClick={() => onDelete(user)}
+          className="rounded-lg border border-red-700 px-3 py-2 text-sm font-medium text-red-300 hover:bg-red-900/20 disabled:cursor-not-allowed disabled:opacity-50"
+          title={canDelete ? "Delete this user account" : "You cannot delete your own account"}
+        >
+          Delete user
         </button>
       </div>
     </div>
