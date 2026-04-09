@@ -1,16 +1,15 @@
 "use client";
 
-import { signIn } from "next-auth/react";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import Link from "next/link";
 
 export default function SignUpPage() {
-  const router = useRouter();
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [verificationUrl, setVerificationUrl] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -32,26 +31,36 @@ export default function SignUpPage() {
       return;
     }
 
-    const signInRes = await signIn("credentials", {
-      email,
-      password,
-      redirect: false
-    });
-
     setLoading(false);
-
-    if (signInRes?.error) {
-      setError("Account created, but sign in failed. Please try signing in.");
-      return;
-    }
-
-    router.push("/welcome");
-    router.refresh();
+    setSuccess(true);
+    setVerificationUrl(typeof data.verificationUrl === "string" ? data.verificationUrl : null);
   }
 
   return (
     <div className="mx-auto max-w-sm">
       <h1 className="mb-6 text-2xl font-semibold">Create an account</h1>
+      {success ? (
+        <div className="space-y-4">
+          <div className="rounded-lg border border-emerald-700/40 bg-emerald-500/10 p-4 text-sm text-emerald-300">
+            Your account was created. Verify your email before creating projects.
+          </div>
+          {verificationUrl && (
+            <a
+              href={verificationUrl}
+              className="inline-block rounded-lg bg-brand px-4 py-2 font-medium text-white hover:bg-brand-light"
+            >
+              Verify email now
+            </a>
+          )}
+          <p className="text-sm text-slate-400">
+            After verification, continue to{" "}
+            <Link href="/auth/signin" className="text-brand hover:underline">
+              sign in
+            </Link>
+            .
+          </p>
+        </div>
+      ) : (
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         {error && (
           <div className="rounded-lg bg-red-500/20 px-4 py-2 text-sm text-red-400">
@@ -96,6 +105,7 @@ export default function SignUpPage() {
           {loading ? "Creating account…" : "Sign up"}
         </button>
       </form>
+      )}
       <p className="mt-4 text-center text-sm text-slate-400">
         Already have an account?{" "}
         <Link href="/auth/signin" className="text-brand hover:underline">

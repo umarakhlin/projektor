@@ -28,6 +28,12 @@ export async function POST(req: Request) {
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  if (!session.user.emailVerified) {
+    return NextResponse.json(
+      { error: "Please verify your email before creating a project." },
+      { status: 403 }
+    );
+  }
   const { ok } = await rateLimit(getRateLimitKey(session.user.id, "create_project"), 5, 15 * 60_000);
   if (!ok) {
     return NextResponse.json(

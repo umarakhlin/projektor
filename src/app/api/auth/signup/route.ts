@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { hash } from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { rateLimit, getClientId } from "@/lib/rate-limit";
+import { issueEmailVerificationToken } from "@/lib/email-verification";
 
 export async function POST(req: Request) {
   const clientId = getClientId(req);
@@ -50,10 +51,16 @@ export async function POST(req: Request) {
       }
     });
 
+    const origin = req.headers.get("origin");
+    const verificationUrl = await issueEmailVerificationToken(user.id, origin);
+    console.info(`Email verification link for ${email}: ${verificationUrl}`);
+
     return NextResponse.json({
       id: user.id,
       email: user.email,
-      name: user.name
+      name: user.name,
+      verificationRequired: true,
+      verificationUrl
     });
   } catch (e) {
     console.error("Signup error:", e);

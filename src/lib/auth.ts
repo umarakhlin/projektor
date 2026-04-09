@@ -30,18 +30,25 @@ export const authOptions: NextAuthOptions = {
         return {
           id: user.id,
           email: user.email,
-          name: user.name ?? undefined
+          name: user.name ?? undefined,
+          emailVerified: Boolean(user.emailVerifiedAt)
         };
       }
     })
   ],
   callbacks: {
     async jwt({ token, user }) {
-      if (user) token.id = user.id;
+      if (user) {
+        token.id = user.id;
+        token.emailVerified = Boolean(user.emailVerified);
+      }
       return token;
     },
     async session({ session, token }) {
-      if (session.user) session.user.id = token.id;
+      if (session.user) {
+        session.user.id = token.id;
+        session.user.emailVerified = Boolean(token.emailVerified);
+      }
       return session;
     }
   },
