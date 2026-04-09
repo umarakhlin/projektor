@@ -50,6 +50,19 @@ export async function PATCH(
   } = {};
   if (status !== undefined) updateData.status = status as "Todo" | "Doing" | "Done";
   if (assigneeId !== undefined) {
+    if (assigneeId) {
+      const assigneeIsOwner = assigneeId === task.project.ownerId;
+      const assigneeIsMember = await prisma.membership.findFirst({
+        where: { projectId, userId: assigneeId },
+        select: { id: true }
+      });
+      if (!assigneeIsOwner && !assigneeIsMember) {
+        return NextResponse.json(
+          { error: "Assignee must be a project member or owner" },
+          { status: 400 }
+        );
+      }
+    }
     updateData.assignee = assigneeId
       ? { connect: { id: assigneeId } }
       : { disconnect: true };

@@ -79,6 +79,20 @@ export async function POST(
     );
   }
 
+  if (assigneeId) {
+    const assigneeIsOwner = assigneeId === project.ownerId;
+    const assigneeIsMember = await prisma.membership.findFirst({
+      where: { projectId, userId: assigneeId },
+      select: { id: true }
+    });
+    if (!assigneeIsOwner && !assigneeIsMember) {
+      return NextResponse.json(
+        { error: "Assignee must be a project member or owner" },
+        { status: 400 }
+      );
+    }
+  }
+
   const task = await prisma.task.create({
     data: {
       projectId,

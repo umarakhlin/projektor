@@ -2,7 +2,7 @@
 
 import { useParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 
 type Update = {
@@ -39,6 +39,7 @@ type Project = {
   title: string;
   status: string;
   ownerId: string;
+  owner: { id: string; name: string | null } | null;
   memberships: Member[];
 };
 
@@ -60,6 +61,23 @@ export default function TeamSpacePage() {
   const [newChatMessage, setNewChatMessage] = useState("");
   const [posting, setPosting] = useState(false);
 
+  const assigneeOptions = useMemo(() => {
+    if (!project) return [] as { id: string; name: string }[];
+    const options: { id: string; name: string }[] = [];
+    if (project.owner?.id) {
+      options.push({
+        id: project.owner.id,
+        name: project.owner.name ?? "Project owner"
+      });
+    }
+    project.memberships?.forEach((m) => {
+      const id = m.user?.id;
+      if (!id || options.some((opt) => opt.id === id)) return;
+      options.push({ id, name: m.user.name ?? "Member" });
+    });
+    return options;
+  }, [project]);
+
   function markTeamSpaceSeen() {
     if (!projectId || !session?.user?.id) return;
     fetch("/api/me/team-space-notifications/seen", {
@@ -76,33 +94,38 @@ export default function TeamSpacePage() {
     }
     if (authStatus !== "authenticated") return;
 
-    Promise.all([
-      fetch(`/api/projects/${projectId}`).then((r) => (r.ok ? r.json() : null)),
-      fetch(`/api/projects/${projectId}/updates`).then((r) => (r.ok ? r.json() : [])),
-      fetch(`/api/projects/${projectId}/tasks`).then((r) => (r.ok ? r.json() : [])),
-      fetch(`/api/projects/${projectId}/chat`).then((r) => (r.ok ? r.json() : []))
-    ]).then(([proj, up, t, chat]) => {
+    let isMounted = true;
+    const loadAll = async () => {
+      const [proj, up, t, chat] = await Promise.all([
+        fetch(`/api/projects/${projectId}`).then((r) => (r.ok ? r.json() : null)),
+        fetch(`/api/projects/${projectId}/updates`).then((r) => (r.ok ? r.json() : [])),
+        fetch(`/api/projects/${projectId}/tasks`).then((r) => (r.ok ? r.json() : [])),
+        fetch(`/api/projects/${projectId}/chat`).then((r) => (r.ok ? r.json() : []))
+      ]);
+      if (!isMounted) return;
       setProject(proj);
       setUpdates(Array.isArray(up) ? up : []);
       setTasks(Array.isArray(t) ? t : []);
       setChatMessages(Array.isArray(chat) ? chat : []);
       markTeamSpaceSeen();
-    }).finally(() => setLoading(false));
-  }, [authStatus, projectId, router]);
+    };
 
-  // Poll chat so new messages appear without refresh
-  useEffect(() => {
-    if (!projectId || !session?.user?.id) return;
+    loadAll()
+      .catch(() => {})
+      .finally(() => {
+        if (isMounted) setLoading(false);
+      });
+
+    // Keep all Team Space sections fresh without manual refresh.
     const interval = setInterval(() => {
-      fetch(`/api/projects/${projectId}/chat`)
-        .then((r) => (r.ok ? r.json() : []))
-        .then((list) => {
-          if (Array.isArray(list)) setChatMessages(list);
-          markTeamSpaceSeen();
-        });
+      loadAll().catch(() => {});
     }, 5000);
-    return () => clearInterval(interval);
-  }, [projectId, session?.user?.id]);
+
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, [authStatus, projectId, router, session?.user?.id]);
 
   async function postUpdate(e: React.FormEvent) {
     e.preventDefault();
@@ -322,9 +345,9 @@ export default function TeamSpacePage() {
               className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-slate-200"
             >
               <option value="">Assign to...</option>
-              {project.memberships?.map((m) => (
-                <option key={m.user.id} value={m.user.id}>
-                  {m.user.name ?? "Member"}
+              {assigneeOptions.map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.name}
                 </option>
               ))}
             </select>
@@ -408,9 +431,9 @@ export default function TeamSpacePage() {
                                 className="rounded border border-slate-700 bg-slate-900 px-2 py-1 text-sm text-slate-300"
                               >
                                 <option value="">Unassigned</option>
-                                {project.memberships?.map((m) => (
-                                  <option key={m.user.id} value={m.user.id}>
-                                    {m.user.name ?? "Member"}
+                                {assigneeOptions.map((u) => (
+                                  <option key={u.id} value={u.id}>
+                                    {u.name}
                                   </option>
                                 ))}
                               </select>
