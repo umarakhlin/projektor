@@ -9,7 +9,6 @@ import { resolveAuthCallbackUrl } from "@/lib/auth-callback-url";
 function SignInForm() {
   const searchParams = useSearchParams();
   const callbackPath = searchParams.get("callbackUrl") ?? "/";
-  const onboardingTestMode = searchParams.get("onboardingTest") === "1";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -30,7 +29,7 @@ function SignInForm() {
     try {
       // redirect: true so NextAuth sets the session cookie via the redirect response
       const redirectUrl = resolveAuthCallbackUrl(
-        onboardingTestMode ? "/welcome" : callbackPath,
+        callbackPath,
         window.location.origin
       );
       await signIn("credentials", {
@@ -88,9 +87,6 @@ function SignInForm() {
         <Link href="/auth/signup" className="text-brand hover:underline">
           Sign up
         </Link>
-      </p>
-      <p className="mt-2 text-center text-xs text-slate-500">
-        Test onboarding redirect: add <code>?onboardingTest=1</code> to this URL.
       </p>
     </div>
   );
