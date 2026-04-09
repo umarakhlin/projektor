@@ -21,6 +21,7 @@ export async function GET() {
       name: true,
       createdAt: true,
       emailVerifiedAt: true,
+      emailVerificationReminderPending: true,
       _count: {
         select: {
           projectsOwned: true,

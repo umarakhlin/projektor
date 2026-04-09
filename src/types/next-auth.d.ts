@@ -3,6 +3,7 @@ import "next-auth";
 declare module "next-auth" {
   interface User {
     emailVerified?: boolean;
+    emailVerificationReminderPending?: boolean;
   }
 
   interface Session {
@@ -11,6 +12,7 @@ declare module "next-auth" {
       email?: string | null;
       name?: string | null;
       emailVerified?: boolean;
+      emailVerificationReminderPending?: boolean;
     };
   }
 }
@@ -19,5 +21,6 @@ declare module "next-auth/jwt" {
   interface JWT {
     id: string;
     emailVerified?: boolean;
+    emailVerificationReminderPending?: boolean;
   }
 }

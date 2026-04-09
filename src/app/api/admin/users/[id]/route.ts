@@ -7,6 +7,7 @@ import { isModerator } from "@/lib/admin-auth";
 type UpdateBody = {
   name?: string | null;
   emailVerified?: boolean;
+  remindToVerifyEmail?: boolean;
 };
 
 export async function PATCH(
@@ -31,18 +32,25 @@ export async function PATCH(
       : body.emailVerified
         ? new Date()
         : null;
+  const nextReminderPending =
+    body.remindToVerifyEmail === undefined
+      ? undefined
+      : Boolean(body.remindToVerifyEmail);
 
   const updated = await prisma.user.update({
     where: { id },
     data: {
       name: nextName,
-      emailVerifiedAt: nextVerifiedAt
+      emailVerifiedAt: nextVerifiedAt,
+      emailVerificationReminderPending:
+        body.emailVerified ? false : nextReminderPending
     },
     select: {
       id: true,
       email: true,
       name: true,
-      emailVerifiedAt: true
+      emailVerifiedAt: true,
+      emailVerificationReminderPending: true
     }
   });
 

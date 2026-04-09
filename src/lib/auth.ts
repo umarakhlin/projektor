@@ -31,7 +31,10 @@ export const authOptions: NextAuthOptions = {
           id: user.id,
           email: user.email,
           name: user.name ?? undefined,
-          emailVerified: Boolean(user.emailVerifiedAt)
+          emailVerified: Boolean(user.emailVerifiedAt),
+          emailVerificationReminderPending: Boolean(
+            user.emailVerificationReminderPending
+          )
         };
       }
     })
@@ -41,6 +44,9 @@ export const authOptions: NextAuthOptions = {
       if (user) {
         token.id = user.id;
         token.emailVerified = Boolean(user.emailVerified);
+        token.emailVerificationReminderPending = Boolean(
+          user.emailVerificationReminderPending
+        );
       }
       return token;
     },
@@ -48,6 +54,9 @@ export const authOptions: NextAuthOptions = {
       if (session.user) {
         session.user.id = token.id;
         session.user.emailVerified = Boolean(token.emailVerified);
+        session.user.emailVerificationReminderPending = Boolean(
+          token.emailVerificationReminderPending
+        );
       }
       return session;
     }

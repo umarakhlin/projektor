@@ -11,6 +11,7 @@ type AdminUser = {
   name: string | null;
   createdAt: string;
   emailVerifiedAt: string | null;
+  emailVerificationReminderPending: boolean;
   _count: {
     projectsOwned: number;
     applications: number;
@@ -70,7 +71,33 @@ export default function AdminUsersPage() {
             ? {
                 ...u,
                 name: updated.name,
-                emailVerifiedAt: updated.emailVerifiedAt
+                emailVerifiedAt: updated.emailVerifiedAt,
+                emailVerificationReminderPending:
+                  updated.emailVerificationReminderPending
+              }
+            : u
+        )
+      );
+    }
+    setSavingUserId(null);
+  }
+
+  async function remindUserToVerify(user: AdminUser) {
+    setSavingUserId(user.id);
+    const res = await fetch(`/api/admin/users/${user.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ remindToVerifyEmail: true })
+    });
+    if (res.ok) {
+      const updated = await res.json();
+      setUsers((prev) =>
+        prev.map((u) =>
+          u.id === user.id
+            ? {
+                ...u,
+                emailVerificationReminderPending:
+                  updated.emailVerificationReminderPending
               }
             : u
         )
@@ -133,6 +160,7 @@ export default function AdminUsersPage() {
             saving={savingUserId === user.id}
             onSave={saveUser}
             onDelete={deleteUser}
+            onRemind={remindUserToVerify}
             canDelete={session?.user?.id !== user.id}
           />
         ))}
@@ -146,12 +174,14 @@ function UserRow({
   saving,
   onSave,
   onDelete,
+  onRemind,
   canDelete
 }: {
   user: AdminUser;
   saving: boolean;
   onSave: (user: AdminUser, next: { name: string; emailVerified: boolean }) => Promise<void>;
   onDelete: (user: AdminUser) => Promise<void>;
+  onRemind: (user: AdminUser) => Promise<void>;
   canDelete: boolean;
 }) {
   const [name, setName] = useState(user.name ?? "");
@@ -170,6 +200,11 @@ function UserRow({
           <p className="text-xs text-slate-500">
             Joined {new Date(user.createdAt).toLocaleString()} · {user._count.projectsOwned} projects · {user._count.applications} applications
           </p>
+          {user.emailVerificationReminderPending && (
+            <p className="mt-1 text-xs text-amber-300">
+              Reminder is queued for next login.
+            </p>
+          )}
         </div>
         <Link href={`/profile/${user.id}`} className="text-xs text-brand hover:underline">
           View profile
@@ -206,6 +241,18 @@ function UserRow({
           title={canDelete ? "Delete this user account" : "You cannot delete your own account"}
         >
           Delete user
+        </button>
+        <button
+          disabled={saving || !!user.emailVerifiedAt}
+          onClick={() => onRemind(user)}
+          className="rounded-lg border border-amber-700 px-3 py-2 text-sm font-medium text-amber-300 hover:bg-amber-900/20 disabled:cursor-not-allowed disabled:opacity-50"
+          title={
+            user.emailVerifiedAt
+              ? "Email is already verified"
+              : "Show verification reminder on next login"
+          }
+        >
+          Remind next login
         </button>
       </div>
     </div>

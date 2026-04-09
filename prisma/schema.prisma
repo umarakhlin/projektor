@@ -79,6 +79,7 @@ model User {
   email        String    @unique
   passwordHash String    @map("password_hash")
   emailVerifiedAt DateTime? @map("email_verified_at")
+  emailVerificationReminderPending Boolean @default(false) @map("email_verification_reminder_pending")
   name         String?
   skills       String?   // JSON array of skill strings
   links        String?   // JSON array of {url, label}
