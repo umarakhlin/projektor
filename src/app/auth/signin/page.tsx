@@ -45,9 +45,26 @@ function SignInForm() {
     }
   }
 
+  async function handleGoogleSignIn() {
+    const redirectUrl = resolveAuthCallbackUrl(callbackPath, window.location.origin);
+    await signIn("google", { callbackUrl: redirectUrl });
+  }
+
   return (
     <div className="mx-auto max-w-sm">
       <h1 className="mb-6 text-2xl font-semibold">Sign in</h1>
+      <button
+        type="button"
+        onClick={handleGoogleSignIn}
+        className="mb-4 w-full rounded-lg border border-slate-700 bg-slate-900 px-4 py-2 text-sm font-medium text-slate-100 hover:border-slate-600"
+      >
+        Continue with Google
+      </button>
+      <div className="mb-4 flex items-center gap-3 text-xs text-slate-500">
+        <div className="h-px flex-1 bg-slate-800" />
+        <span>or use email</span>
+        <div className="h-px flex-1 bg-slate-800" />
+      </div>
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         {error && (
           <div className="rounded-lg bg-red-500/20 px-4 py-2 text-sm text-red-400">

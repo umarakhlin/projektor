@@ -1,5 +1,6 @@
 "use client";
 
+import { signIn } from "next-auth/react";
 import { useState } from "react";
 import Link from "next/link";
 
@@ -38,9 +39,25 @@ export default function SignUpPage() {
     setVerificationUrl(typeof data.verificationUrl === "string" ? data.verificationUrl : null);
   }
 
+  async function handleGoogleSignUp() {
+    await signIn("google", { callbackUrl: "/welcome" });
+  }
+
   return (
     <div className="mx-auto max-w-sm">
       <h1 className="mb-6 text-2xl font-semibold">Create an account</h1>
+      <button
+        type="button"
+        onClick={handleGoogleSignUp}
+        className="mb-4 w-full rounded-lg border border-slate-700 bg-slate-900 px-4 py-2 text-sm font-medium text-slate-100 hover:border-slate-600"
+      >
+        Continue with Google
+      </button>
+      <div className="mb-4 flex items-center gap-3 text-xs text-slate-500">
+        <div className="h-px flex-1 bg-slate-800" />
+        <span>or use email</span>
+        <div className="h-px flex-1 bg-slate-800" />
+      </div>
       {success ? (
         <div className="space-y-4">
           <div className="rounded-lg border border-emerald-700/40 bg-emerald-500/10 p-4 text-sm text-emerald-300">
