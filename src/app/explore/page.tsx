@@ -105,6 +105,14 @@ export default function ExplorePage() {
     loadFeed(offset + 20, true);
   }
 
+  const hasActiveFilters = Boolean(stage || category || roleType);
+
+  function clearFilters() {
+    setStage("");
+    setCategory("");
+    setRoleType("");
+  }
+
   return (
     <div className="mx-auto max-w-2xl">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
@@ -118,6 +126,12 @@ export default function ExplorePage() {
           </Link>
         )}
       </div>
+      <p className="mb-4 text-sm leading-relaxed text-slate-400">
+        Browse projects that are recruiting. Filter by stage, category, or the type of role they need.
+        {status === "authenticated"
+          ? " Tap the heart on a card to save it for later."
+          : " Sign in to save projects to your list."}
+      </p>
 
       <div className="mb-6 rounded-lg border border-slate-700 bg-slate-900/50 p-4">
         <p className="mb-3 text-sm font-medium text-slate-400">Filters</p>
@@ -167,9 +181,6 @@ export default function ExplorePage() {
             </select>
           </label>
         </div>
-        {status === "authenticated" && (
-          <p className="mt-3 text-xs text-slate-500">Tap ♡ on a card to save it to your list.</p>
-        )}
       </div>
 
       {errorState === "auth" && (
@@ -186,7 +197,38 @@ export default function ExplorePage() {
       {loading ? (
         <p className="text-slate-400">Loading…</p>
       ) : projects.length === 0 ? (
-        <p className="text-slate-500">No projects match your filters.</p>
+        <div className="rounded-xl border border-slate-800 bg-slate-900/40 px-6 py-10 text-center">
+          {hasActiveFilters ? (
+            <>
+              <p className="text-slate-200">
+                No projects match these filters right now.
+              </p>
+              <p className="mt-2 text-sm text-slate-500">
+                Try widening your filters or check back later.
+              </p>
+              <button
+                type="button"
+                onClick={clearFilters}
+                className="mt-5 rounded-lg border border-slate-600 px-4 py-2 text-sm font-medium text-slate-200 hover:border-slate-500 hover:bg-slate-800/50"
+              >
+                Clear all filters
+              </button>
+            </>
+          ) : (
+            <>
+              <p className="text-slate-200">No projects in the catalog yet.</p>
+              <p className="mt-2 text-sm text-slate-500">
+                When someone publishes a project, it will show up here.
+              </p>
+              <Link
+                href="/create"
+                className="mt-5 inline-flex rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand-light"
+              >
+                Create a project
+              </Link>
+            </>
+          )}
+        </div>
       ) : (
         <div className="space-y-4">
           {projects.map((project) => {

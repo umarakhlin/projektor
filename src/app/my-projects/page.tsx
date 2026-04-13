@@ -127,12 +127,23 @@ export default function MyProjectsPage() {
 
   return (
     <div className="mx-auto max-w-2xl">
-      <h1 className="mb-6 text-xl font-semibold">My Projects</h1>
+      <h1 className="text-xl font-semibold">My Projects</h1>
+      <p className="mt-2 mb-6 text-sm leading-relaxed text-slate-400">
+        Drafts you have not published yet, projects you run, and teams you joined — all in one place.
+      </p>
 
       <section className="mb-8">
         <h2 className="mb-3 text-sm font-medium text-slate-400">Saved drafts</h2>
         {savedDrafts.length === 0 ? (
-          <p className="text-slate-500">No saved drafts yet.</p>
+          <div className="rounded-xl border border-slate-800 bg-slate-900/40 px-5 py-6 text-sm text-slate-400">
+            <p>No drafts yet. Start a project and you can leave anytime — we keep your progress.</p>
+            <Link
+              href="/create"
+              className="mt-3 inline-block text-sm font-medium text-brand hover:underline"
+            >
+              Start creating →
+            </Link>
+          </div>
         ) : (
           <div className="space-y-2">
             {savedDrafts.map((p) => {
@@ -162,7 +173,17 @@ export default function MyProjectsPage() {
       <section className="mb-8">
         <h2 className="mb-3 text-sm font-medium text-slate-400">Created</h2>
         {createdLive.length === 0 ? (
-          <p className="text-slate-500">No published/recruiting projects yet.</p>
+          <div className="rounded-xl border border-slate-800 bg-slate-900/40 px-5 py-6 text-sm text-slate-400">
+            <p>
+              Nothing published yet. When you launch from the create flow, your live projects appear here.
+            </p>
+            <Link
+              href="/create"
+              className="mt-3 inline-block text-sm font-medium text-brand hover:underline"
+            >
+              Create a project →
+            </Link>
+          </div>
         ) : (
           <div className="space-y-2">
             {createdLive.map((p) => {
@@ -212,7 +233,15 @@ export default function MyProjectsPage() {
       <section>
         <h2 className="mb-3 text-sm font-medium text-slate-400">Joined</h2>
         {joined.length === 0 ? (
-          <p className="text-slate-500">You haven&apos;t joined any projects yet.</p>
+          <div className="rounded-xl border border-slate-800 bg-slate-900/40 px-5 py-6 text-sm text-slate-400">
+            <p>You are not on a team yet. Explore projects and apply to a role that fits.</p>
+            <Link
+              href="/explore"
+              className="mt-3 inline-block text-sm font-medium text-brand hover:underline"
+            >
+              Explore projects →
+            </Link>
+          </div>
         ) : (
           <div className="space-y-2">
             {joined

@@ -108,45 +108,81 @@ export default function TeamSpacePage() {
     return <div className="mx-auto max-w-lg text-slate-400">Loading…</div>;
   }
 
-  if (teamAccess.length === 0) {
-    return (
-      <div className="mx-auto max-w-lg">
-        <h1 className="mb-6 text-xl font-semibold">Team Space</h1>
-        <p className="text-slate-500">
-          You don’t have any team spaces yet. Join a project or create one, then open its team space (updates, tasks, chat).
-        </p>
-        <Link href="/inbox" className="mt-4 inline-block text-brand hover:underline">
-          Go to Inbox →
-        </Link>
-      </div>
-    );
-  }
+  const empty = teamAccess.length === 0;
 
   return (
     <div className="mx-auto max-w-lg">
-      <h1 className="mb-6 text-xl font-semibold">Team Space</h1>
-      <p className="mb-4 text-sm text-slate-400">
-        Pick a project to open its team space (updates, tasks, chat).
+      <h1 className="text-xl font-semibold">Team Space</h1>
+      <p className="mt-2 mb-6 text-sm leading-relaxed text-slate-400">
+        Each project you <strong className="font-medium text-slate-300">own</strong> or{" "}
+        <strong className="font-medium text-slate-300">joined</strong> has a shared space: updates, tasks,
+        and chat. Pick one below to jump in. Unread counts refresh about every ten seconds.
       </p>
-      <div className="space-y-2">
-        {teamAccess.map((m) => (
-          <Link
-            key={m.projectId}
-            href={`/projects/${m.projectId}/space`}
-            className="flex items-center justify-between rounded-lg border border-slate-700 bg-slate-900/50 p-4 transition hover:border-brand/50 hover:bg-slate-800/50"
-          >
-            <span className="font-medium">{m.projectTitle}</span>
-            <span className="flex items-center gap-2 text-sm text-slate-500">
-              <span>as {m.roleLabel}</span>
-              {(unreadByProject[m.projectId] ?? 0) > 0 && (
-                <span className="inline-flex min-w-[1.25rem] justify-center rounded-full bg-brand px-1 text-[0.7rem] font-medium text-white">
-                  {unreadByProject[m.projectId]}
-                </span>
-              )}
-            </span>
-          </Link>
-        ))}
-      </div>
+
+      {empty ? (
+        <div className="rounded-xl border border-slate-800 bg-slate-900/40 px-5 py-6 text-sm text-slate-400">
+          <p className="text-slate-200">No team spaces yet</p>
+          <p className="mt-2">
+            Create a project, publish it, or accept an offer from your Inbox. Then this hub lists every
+            project where you can use Team Space.
+          </p>
+          <div className="mt-4 flex flex-wrap gap-3">
+            <Link
+              href="/create"
+              className="inline-flex rounded-lg bg-brand px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-light"
+            >
+              Create a project
+            </Link>
+            <Link
+              href="/explore"
+              className="inline-flex rounded-lg border border-slate-600 px-3 py-1.5 text-sm text-slate-200 hover:border-slate-500"
+            >
+              Explore
+            </Link>
+            <Link
+              href="/inbox"
+              className="inline-flex rounded-lg border border-slate-600 px-3 py-1.5 text-sm text-slate-200 hover:border-slate-500"
+            >
+              Inbox
+            </Link>
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {teamAccess.map((m) => (
+            <Link
+              key={m.projectId}
+              href={`/projects/${m.projectId}/space`}
+              className="flex items-center justify-between rounded-lg border border-slate-700 bg-slate-900/50 p-4 transition hover:border-brand/50 hover:bg-slate-800/50"
+            >
+              <span className="font-medium">{m.projectTitle}</span>
+              <span className="flex items-center gap-2 text-sm text-slate-500">
+                <span>as {m.roleLabel}</span>
+                {(unreadByProject[m.projectId] ?? 0) > 0 && (
+                  <span className="inline-flex min-w-[1.25rem] justify-center rounded-full bg-brand px-1 text-[0.7rem] font-medium text-white">
+                    {unreadByProject[m.projectId]}
+                  </span>
+                )}
+              </span>
+            </Link>
+          ))}
+        </div>
+      )}
+
+      <nav
+        className="mt-10 flex flex-wrap gap-x-4 gap-y-2 border-t border-slate-800 pt-6 text-sm text-slate-500"
+        aria-label="Related pages"
+      >
+        <Link href="/inbox" className="hover:text-slate-200">
+          Inbox
+        </Link>
+        <Link href="/my-projects" className="hover:text-slate-200">
+          My projects
+        </Link>
+        <Link href="/" className="hover:text-slate-200">
+          Home feed
+        </Link>
+      </nav>
     </div>
   );
 }

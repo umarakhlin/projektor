@@ -45,21 +45,11 @@ export default function SignUpPage() {
 
   return (
     <div className="mx-auto max-w-sm">
-      <h1 className="mb-6 text-2xl font-semibold">Create an account</h1>
-      <button
-        type="button"
-        onClick={handleGoogleSignUp}
-        className="mb-4 w-full rounded-lg border border-slate-700 bg-slate-900 px-4 py-2 text-sm font-medium text-slate-100 hover:border-slate-600"
-      >
-        Continue with Google
-      </button>
-      <div className="mb-4 flex items-center gap-3 text-xs text-slate-500">
-        <div className="h-px flex-1 bg-slate-800" />
-        <span>or use email</span>
-        <div className="h-px flex-1 bg-slate-800" />
-      </div>
+      <h1 className="text-2xl font-semibold">
+        {success ? "Check your email" : "Create an account"}
+      </h1>
       {success ? (
-        <div className="space-y-4">
+        <div className="mt-4 space-y-4">
           <div className="rounded-lg border border-emerald-700/40 bg-emerald-500/10 p-4 text-sm text-emerald-300">
             Your account was created. Verify your email before creating projects.
           </div>
@@ -83,59 +73,87 @@ export default function SignUpPage() {
             </Link>
             .
           </p>
+          <p className="pt-2 text-center text-xs text-slate-500">
+            <Link href="/" className="hover:text-slate-300">
+              ← Back to home
+            </Link>
+          </p>
         </div>
       ) : (
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-        {error && (
-          <div className="rounded-lg bg-red-500/20 px-4 py-2 text-sm text-red-400">
-            {error}
+        <>
+          <p className="mt-2 mb-6 text-sm leading-relaxed text-slate-400">
+            Save projects, apply to teams, and publish your own ideas. Continuing with Google is the
+            quickest path; email sign-up works too (you will verify your email before creating projects).
+          </p>
+          <button
+            type="button"
+            onClick={handleGoogleSignUp}
+            className="mb-4 w-full rounded-lg border border-slate-700 bg-slate-900 px-4 py-2 text-sm font-medium text-slate-100 hover:border-slate-600"
+          >
+            Continue with Google
+          </button>
+          <div className="mb-4 flex items-center gap-3 text-xs text-slate-500">
+            <div className="h-px flex-1 bg-slate-800" />
+            <span>or use email</span>
+            <div className="h-px flex-1 bg-slate-800" />
           </div>
-        )}
-        <label className="flex flex-col gap-1">
-          <span className="text-sm text-slate-400">Email</span>
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            className="rounded-lg border border-slate-700 bg-slate-900 px-4 py-2 text-slate-50 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
-          />
-        </label>
-        <label className="flex flex-col gap-1">
-          <span className="text-sm text-slate-400">Name (optional)</span>
-          <input
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className="rounded-lg border border-slate-700 bg-slate-900 px-4 py-2 text-slate-50 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
-          />
-        </label>
-        <label className="flex flex-col gap-1">
-          <span className="text-sm text-slate-400">Password (min 8 characters)</span>
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            minLength={8}
-            className="rounded-lg border border-slate-700 bg-slate-900 px-4 py-2 text-slate-50 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
-          />
-        </label>
-        <button
-          type="submit"
-          disabled={loading}
-          className="mt-2 rounded-lg bg-brand px-4 py-2 font-medium text-white hover:bg-brand-light disabled:opacity-50"
-        >
-          {loading ? "Creating account…" : "Sign up"}
-        </button>
-      </form>
+          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+            {error && (
+              <div className="rounded-lg bg-red-500/20 px-4 py-2 text-sm text-red-400">
+                {error}
+              </div>
+            )}
+            <label className="flex flex-col gap-1">
+              <span className="text-sm text-slate-400">Email</span>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                className="rounded-lg border border-slate-700 bg-slate-900 px-4 py-2 text-slate-50 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
+              />
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="text-sm text-slate-400">Name (optional)</span>
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="rounded-lg border border-slate-700 bg-slate-900 px-4 py-2 text-slate-50 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
+              />
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="text-sm text-slate-400">Password (min 8 characters)</span>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                minLength={8}
+                className="rounded-lg border border-slate-700 bg-slate-900 px-4 py-2 text-slate-50 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
+              />
+            </label>
+            <button
+              type="submit"
+              disabled={loading}
+              className="mt-2 rounded-lg bg-brand px-4 py-2 font-medium text-white hover:bg-brand-light disabled:opacity-50"
+            >
+              {loading ? "Creating account…" : "Sign up"}
+            </button>
+          </form>
+          <p className="mt-4 text-center text-sm text-slate-400">
+            Already have an account?{" "}
+            <Link href="/auth/signin" className="text-brand hover:underline">
+              Sign in
+            </Link>
+          </p>
+          <p className="mt-6 text-center text-xs text-slate-500">
+            <Link href="/" className="hover:text-slate-300">
+              ← Back to home
+            </Link>
+          </p>
+        </>
       )}
-      <p className="mt-4 text-center text-sm text-slate-400">
-        Already have an account?{" "}
-        <Link href="/auth/signin" className="text-brand hover:underline">
-          Sign in
-        </Link>
-      </p>
     </div>
   );
 }

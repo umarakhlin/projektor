@@ -4,6 +4,7 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { isProfileComplete } from "@/lib/profile-completion";
 
 type Profile = {
   id: string;
@@ -195,8 +196,30 @@ export default function ProfilePage() {
     );
   }
 
+  const profileCheck = {
+    name: name.trim() || profile.name,
+    skills,
+    settings: { avatarUrl: avatarUrl.trim() || undefined }
+  };
+  const looksComplete = isProfileComplete(profileCheck);
+
   return (
     <div className="mx-auto max-w-lg">
+      <p className="mb-4 text-sm leading-relaxed text-slate-400">
+        This is what teammates and project owners see when they work with you. A clear name, photo,
+        and skills help when you apply and when people browse your public page.
+      </p>
+      {!looksComplete && (
+        <div className="mb-6 rounded-xl border border-brand/30 bg-brand/10 px-4 py-3 text-sm text-slate-200">
+          <p className="font-medium text-brand">Profile checklist</p>
+          <p className="mt-1 text-slate-300">
+            Add a <strong className="font-medium text-slate-200">display name</strong>, a{" "}
+            <strong className="font-medium text-slate-200">profile picture</strong>, and at least one{" "}
+            <strong className="font-medium text-slate-200">skill</strong> to unlock the full quick-start
+            experience on your home feed.
+          </p>
+        </div>
+      )}
       <div className="mb-6 flex items-center gap-3">
         <input
           ref={fileInputRef}
@@ -273,7 +296,10 @@ export default function ProfilePage() {
         )}
 
         <div className="flex flex-col gap-2">
-          <span className="text-sm text-slate-400">Skills (choose options)</span>
+          <span className="text-sm text-slate-400">Skills</span>
+          <p className="text-xs text-slate-500">
+            Tap to toggle. You can pick several — they help match you to projects and roles.
+          </p>
           <div className="flex flex-wrap gap-2">
             {SKILL_OPTIONS.map((skill) => {
               const selected = skills.includes(skill);
@@ -374,6 +400,21 @@ export default function ProfilePage() {
           {saving ? "Saving…" : "Save profile"}
         </button>
       </form>
+
+      <nav
+        className="mt-10 flex flex-wrap gap-x-4 gap-y-2 border-t border-slate-800 pt-6 text-sm text-slate-500"
+        aria-label="Related pages"
+      >
+        <Link href="/" className="hover:text-slate-200">
+          Home feed
+        </Link>
+        <Link href="/explore" className="hover:text-slate-200">
+          Explore
+        </Link>
+        <Link href={`/profile/${profile.id}`} className="hover:text-slate-200">
+          View public profile
+        </Link>
+      </nav>
     </div>
   );
 }

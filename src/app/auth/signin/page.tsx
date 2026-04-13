@@ -16,9 +16,21 @@ function SignInForm() {
 
   useEffect(() => {
     const err = searchParams.get("error");
-    if (err === "CredentialsSignin") {
-      setError("Invalid email or password. Check your email and password, or sign up if you don’t have an account.");
-    }
+    if (!err) return;
+    const byCode: Record<string, string> = {
+      CredentialsSignin:
+        "Invalid email or password. Check your details, or sign up if you do not have an account yet.",
+      OAuthAccountNotLinked:
+        "This email is already used with a password. Sign in with email and password, or use the Google account that matches this email.",
+      AccessDenied: "Sign-in was cancelled or this account is not allowed for this app.",
+      Configuration: "Sign-in is not configured correctly on the server. Try again later.",
+      Callback:
+        "Something went wrong after the provider redirected back. Try Google sign-in again.",
+      OAuthSignin: "Could not start Google sign-in. Try again in a moment.",
+      OAuthCallback: "Google sign-in did not complete. Try again.",
+      Verification: "The sign-in link expired or was already used. Request a new one if you use magic links."
+    };
+    setError(byCode[err] ?? "Sign-in failed. Try again or use another method.");
   }, [searchParams]);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -52,7 +64,11 @@ function SignInForm() {
 
   return (
     <div className="mx-auto max-w-sm">
-      <h1 className="mb-6 text-2xl font-semibold">Sign in</h1>
+      <h1 className="text-2xl font-semibold">Sign in</h1>
+      <p className="mt-2 mb-6 text-sm leading-relaxed text-slate-400">
+        Use Google or your email and password. After you sign in, we send you back to where you were
+        (or to the home feed).
+      </p>
       <button
         type="button"
         onClick={handleGoogleSignIn}
@@ -103,6 +119,11 @@ function SignInForm() {
         Don&apos;t have an account?{" "}
         <Link href="/auth/signup" className="text-brand hover:underline">
           Sign up
+        </Link>
+      </p>
+      <p className="mt-6 text-center text-xs text-slate-500">
+        <Link href="/" className="hover:text-slate-300">
+          ← Back to home
         </Link>
       </p>
     </div>

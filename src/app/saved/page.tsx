@@ -61,31 +61,41 @@ export default function SavedProjectsPage() {
 
   return (
     <div className="mx-auto max-w-2xl">
-      <div className="mb-4">
+      <h1 className="text-xl font-semibold">Saved projects</h1>
+      <p className="mt-2 mb-4 text-sm leading-relaxed text-slate-400">
+        A personal shortlist of projects you care about. Use the heart on any card in the feed or Explore
+        to add or remove items here.
+      </p>
+      <div className="mb-6">
         <Link
           href="/explore"
           className="inline-flex items-center rounded-lg border border-slate-600 px-3 py-1.5 text-sm text-slate-300 hover:border-slate-500 hover:text-slate-100"
         >
-          ← Go back to the Explorer
+          ← Back to Explore
         </Link>
       </div>
-      <h1 className="mb-2 text-xl font-semibold">Saved projects</h1>
-      <p className="mb-6 text-sm text-slate-400">
-        Projects you marked with ♥. Tap again on a card to remove from this list.
-      </p>
 
       {projects.length === 0 ? (
-        <p className="text-slate-500">
-          Nothing saved yet. Browse the{" "}
-          <Link href="/" className="text-brand hover:underline">
-            feed
-          </Link>{" "}
-          or{" "}
-          <Link href="/explore" className="text-brand hover:underline">
-            Explore
-          </Link>{" "}
-          and tap ♡ on a project.
-        </p>
+        <div className="rounded-xl border border-slate-800 bg-slate-900/40 px-5 py-8 text-center text-sm text-slate-400">
+          <p className="text-slate-200">Nothing saved yet</p>
+          <p className="mt-2">
+            Browse the home feed or Explore and tap the heart on a project to save it for later.
+          </p>
+          <div className="mt-5 flex flex-wrap justify-center gap-3">
+            <Link
+              href="/explore"
+              className="inline-flex rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand-light"
+            >
+              Explore projects
+            </Link>
+            <Link
+              href="/"
+              className="inline-flex rounded-lg border border-slate-600 px-4 py-2 text-sm text-slate-200 hover:border-slate-500"
+            >
+              Home feed
+            </Link>
+          </div>
+        </div>
       ) : (
         <div className="space-y-4">
           {projects.map((project) => {
@@ -148,6 +158,21 @@ export default function SavedProjectsPage() {
           })}
         </div>
       )}
+
+      <nav
+        className="mt-10 flex flex-wrap gap-x-4 gap-y-2 border-t border-slate-800 pt-6 text-sm text-slate-500"
+        aria-label="Related pages"
+      >
+        <Link href="/" className="hover:text-slate-200">
+          Home feed
+        </Link>
+        <Link href="/inbox" className="hover:text-slate-200">
+          Inbox
+        </Link>
+        <Link href="/profile" className="hover:text-slate-200">
+          Profile
+        </Link>
+      </nav>
     </div>
   );
 }

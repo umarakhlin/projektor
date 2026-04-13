@@ -150,103 +150,158 @@ export default function InboxPage() {
   const hasApps = appNotifications.length > 0;
   const hasChat = memberships.length > 0;
 
+  const inboxEmpty = !hasOffers && !hasApps && !hasChat;
+
   return (
     <div className="mx-auto max-w-lg">
-      <h1 className="mb-6 text-xl font-semibold">Inbox</h1>
+      <h1 className="text-xl font-semibold">Inbox</h1>
+      <p className="mt-2 mb-6 text-sm leading-relaxed text-slate-400">
+        <strong className="font-medium text-slate-300">Offers</strong> are invitations after a creator
+        wants you on their team. <strong className="font-medium text-slate-300">Applications</strong>{" "}
+        are updates for projects you own. <strong className="font-medium text-slate-300">Team chat</strong>{" "}
+        lists projects where you are already a member.
+      </p>
 
-      {/* Offers */}
-      <section className="mb-8">
-        <h2 className="mb-2 text-sm font-medium uppercase tracking-wide text-slate-500">
-          Offers
-        </h2>
-        {!hasOffers ? (
-          <p className="text-slate-500">No pending offers.</p>
-        ) : (
-          <div className="space-y-4">
-            {offers.map((offer) => (
-              <div
-                key={offer.id}
-                className="rounded-lg border border-slate-700 bg-slate-900/50 p-4"
-              >
-                <h3 className="font-medium">
-                  {offer.application.role.project.title} — {offer.application.role.title}
-                </h3>
-                <p className="text-sm text-slate-400">
-                  from {offer.application.role.project.owner.name ?? "Creator"}
+      {inboxEmpty ? (
+        <div className="rounded-xl border border-slate-800 bg-slate-900/40 px-4 py-5 text-sm text-slate-400">
+          <p className="text-slate-200">Nothing here yet — that is normal when you are getting started.</p>
+          <p className="mt-2">
+            Apply to roles on the feed or Explore; when someone sends an offer, it will show up under
+            Offers. Application alerts appear when you own projects; team chat appears after you join a
+            team.
+          </p>
+          <div className="mt-4 flex flex-wrap gap-3">
+            <Link
+              href="/explore"
+              className="inline-flex rounded-lg bg-brand px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-light"
+            >
+              Explore projects
+            </Link>
+            <Link
+              href="/"
+              className="inline-flex rounded-lg border border-slate-600 px-3 py-1.5 text-sm text-slate-200 hover:border-slate-500"
+            >
+              Home feed
+            </Link>
+          </div>
+        </div>
+      ) : (
+        <>
+          {/* Offers */}
+          <section className="mb-8">
+            <h2 className="mb-2 text-sm font-medium uppercase tracking-wide text-slate-500">
+              Offers
+            </h2>
+            {!hasOffers ? (
+              <div className="rounded-xl border border-slate-800 bg-slate-900/40 px-4 py-4 text-sm text-slate-400">
+                <p>
+                  No pending offers. When a project owner accepts your application, their invite appears
+                  here.
                 </p>
-                <div className="mt-4 flex gap-2">
-                  <button
-                    onClick={() => respond(offer.id, "accept")}
-                    disabled={!!acting}
-                    className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand-light disabled:opacity-50"
-                  >
-                    {acting === offer.id ? "Processing…" : "Accept"}
-                  </button>
-                  <button
-                    onClick={() => respond(offer.id, "decline")}
-                    disabled={!!acting}
-                    className="rounded-lg border border-slate-600 px-4 py-2 text-sm text-slate-400 hover:text-red-400 disabled:opacity-50"
-                  >
-                    Decline
-                  </button>
-                </div>
+                <Link href="/explore" className="mt-2 inline-block font-medium text-brand hover:underline">
+                  Browse projects to apply →
+                </Link>
               </div>
-            ))}
-          </div>
-        )}
-      </section>
+            ) : (
+              <div className="space-y-4">
+                {offers.map((offer) => (
+                  <div
+                    key={offer.id}
+                    className="rounded-lg border border-slate-700 bg-slate-900/50 p-4"
+                  >
+                    <h3 className="font-medium">
+                      {offer.application.role.project.title} — {offer.application.role.title}
+                    </h3>
+                    <p className="text-sm text-slate-400">
+                      from {offer.application.role.project.owner.name ?? "Creator"}
+                    </p>
+                    <div className="mt-4 flex gap-2">
+                      <button
+                        onClick={() => respond(offer.id, "accept")}
+                        disabled={!!acting}
+                        className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand-light disabled:opacity-50"
+                      >
+                        {acting === offer.id ? "Processing…" : "Accept"}
+                      </button>
+                      <button
+                        onClick={() => respond(offer.id, "decline")}
+                        disabled={!!acting}
+                        className="rounded-lg border border-slate-600 px-4 py-2 text-sm text-slate-400 hover:text-red-400 disabled:opacity-50"
+                      >
+                        Decline
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
 
-      {/* Application notifications (for project owners) */}
-      <section className="mb-8">
-        <h2 className="mb-2 text-sm font-medium uppercase tracking-wide text-slate-500">
-          Applications
-        </h2>
-        {!hasApps ? (
-          <p className="text-slate-500">No new applications.</p>
-        ) : (
-          <div className="space-y-2">
-            {appNotifications.map((app) => (
-              <Link
-                key={app.id}
-                href={`/projects/${app.projectId}/applications`}
-                className="block rounded-lg border border-slate-700 bg-slate-900/50 p-3 transition hover:border-slate-600"
-              >
-                <p className="font-medium text-slate-200">
-                  {app.applicantName} applied to <span className="text-brand">{app.roleTitle}</span> on {app.projectTitle}
-                </p>
-                <p className="mt-1 text-xs text-slate-500">
-                  View applications →
-                </p>
-              </Link>
-            ))}
-          </div>
-        )}
-      </section>
+          {/* Application notifications (for project owners) */}
+          <section className="mb-8">
+            <h2 className="mb-2 text-sm font-medium uppercase tracking-wide text-slate-500">
+              Applications
+            </h2>
+            {!hasApps ? (
+              <div className="rounded-xl border border-slate-800 bg-slate-900/40 px-4 py-4 text-sm text-slate-400">
+                <p>No new application alerts. When someone applies to your project, a summary shows here.</p>
+                <Link href="/my-projects" className="mt-2 inline-block font-medium text-brand hover:underline">
+                  My projects →
+                </Link>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {appNotifications.map((app) => (
+                  <Link
+                    key={app.id}
+                    href={`/projects/${app.projectId}/applications`}
+                    className="block rounded-lg border border-slate-700 bg-slate-900/50 p-3 transition hover:border-slate-600"
+                  >
+                    <p className="font-medium text-slate-200">
+                      {app.applicantName} applied to <span className="text-brand">{app.roleTitle}</span> on{" "}
+                      {app.projectTitle}
+                    </p>
+                    <p className="mt-1 text-xs text-slate-500">View applications →</p>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </section>
 
-      {/* Team chat (projects you're in) */}
-      <section>
-        <h2 className="mb-2 text-sm font-medium uppercase tracking-wide text-slate-500">
-          Team chat
-        </h2>
-        {!hasChat ? (
-          <p className="text-slate-500">You’re not in any project teams yet. Accept an offer to join and use team chat.</p>
-        ) : (
-          <div className="space-y-2">
-            {memberships.map((m) => (
-              <Link
-                key={m.project.id}
-                href={`/projects/${m.project.id}/space`}
-                className="block rounded-lg border border-slate-700 bg-slate-900/50 p-3 transition hover:border-slate-600"
-              >
-                <p className="font-medium text-slate-200">{m.project.title}</p>
-                <p className="mt-1 text-xs text-slate-500">
-                  Team space & chat · as {m.role.title} →
+          {/* Team chat (projects you're in) */}
+          <section>
+            <h2 className="mb-2 text-sm font-medium uppercase tracking-wide text-slate-500">
+              Team chat
+            </h2>
+            {!hasChat ? (
+              <div className="rounded-xl border border-slate-800 bg-slate-900/40 px-4 py-4 text-sm text-slate-400">
+                <p>
+                  You are not in any project teams yet. Accept an offer from the Offers section above, then
+                  open Team Space from here or the header.
                 </p>
-              </Link>
-            ))}
-          </div>
-        )}
-      </section>
+                <Link href="/team-space" className="mt-2 inline-block font-medium text-brand hover:underline">
+                  Team Space hub →
+                </Link>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {memberships.map((m) => (
+                  <Link
+                    key={m.project.id}
+                    href={`/projects/${m.project.id}/space`}
+                    className="block rounded-lg border border-slate-700 bg-slate-900/50 p-3 transition hover:border-slate-600"
+                  >
+                    <p className="font-medium text-slate-200">{m.project.title}</p>
+                    <p className="mt-1 text-xs text-slate-500">
+                      Team space & chat · as {m.role.title} →
+                    </p>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </section>
+        </>
+      )}
     </div>
   );
 }

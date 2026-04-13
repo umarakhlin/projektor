@@ -40,6 +40,25 @@ type ProjectStage = (typeof STAGES)[number]["value"];
 type ProjectCategory = (typeof CATEGORIES)[number]["value"];
 const CREATE_DRAFT_KEY = "projektor.create.draft.v1";
 
+const STEP_GUIDE = [
+  {
+    title: "Basics",
+    hint: "Give your project a clear name and explain the idea. Stage and category help the right people discover it."
+  },
+  {
+    title: "Time and rewards",
+    hint: "Set realistic weekly hours and duration so applicants know what to expect. Pick how collaborators can be compensated or motivated."
+  },
+  {
+    title: "Roles",
+    hint: "List each role you need, how many people, and skills. These appear when people browse and apply."
+  },
+  {
+    title: "Review and publish",
+    hint: "Confirm the checklist is green, then publish. You can still edit the project later from its page."
+  }
+] as const;
+
 type ApiDraftProject = {
   id: string;
   status: string;
@@ -507,19 +526,34 @@ function CreateProjectPageInner() {
 
   return (
     <div className="mx-auto max-w-xl">
-      <h1 className="mb-6 text-2xl font-semibold">Create project</h1>
-      <p className="mb-4 text-sm text-slate-400">
-        Your progress is saved as draft. You can publish later from My Projects.
+      <h1 className="mb-2 text-2xl font-semibold">Create project</h1>
+      <p className="mb-6 text-sm text-slate-400">
+        Four short steps. Your progress is saved automatically as a draft — you can leave anytime and continue from{" "}
+        <Link href="/my-projects" className="text-brand hover:underline">
+          My Projects
+        </Link>
+        .
       </p>
-      <div className="mb-6 flex gap-2">
+      <div className="mb-2 flex gap-2" role="list" aria-label="Creation steps">
         {[1, 2, 3, 4].map((s) => (
           <div
             key={s}
-            className={`h-2 flex-1 rounded-full ${
+            role="listitem"
+            aria-current={step === s ? "step" : undefined}
+            title={`Step ${s} of 4`}
+            className={`h-2 flex-1 rounded-full transition-colors ${
               s <= step ? "bg-brand" : "bg-slate-700"
             }`}
           />
         ))}
+      </div>
+      <div className="mb-6 rounded-lg border border-slate-800 bg-slate-900/40 px-4 py-3">
+        <p className="text-sm font-medium text-slate-200">
+          Step {step} of 4 · {STEP_GUIDE[step - 1].title}
+        </p>
+        <p className="mt-1 text-sm leading-relaxed text-slate-500">
+          {STEP_GUIDE[step - 1].hint}
+        </p>
       </div>
 
       {error && (
@@ -542,7 +576,7 @@ function CreateProjectPageInner() {
             />
           </label>
           <label className="flex flex-col gap-1">
-            <span className="text-sm text-slate-400">Pitch / short description *</span>
+            <span className="text-sm text-slate-400">Pitch / short description</span>
             <textarea
               value={pitch}
               onChange={(e) => setPitch(e.target.value)}
@@ -571,6 +605,11 @@ function CreateProjectPageInner() {
               className="rounded-lg border border-slate-700 bg-slate-900 px-4 py-2 text-slate-50 placeholder:text-slate-500 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
             />
           </label>
+          <p className="text-xs text-slate-500">
+            To continue to the next step, fill in{" "}
+            <span className="text-slate-400">at least one</span> of: pitch, problem, or solution (in
+            addition to the title).
+          </p>
           <label className="flex flex-col gap-1">
             <span className="text-sm text-slate-400">Stage</span>
             <select

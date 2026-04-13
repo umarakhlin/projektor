@@ -41,6 +41,9 @@ export default async function ProjectDetailPage({
 
   const canApply = project.status === "Recruiting";
   const openRoles = project.roles.filter((r) => r.state !== "Filled");
+  const totalRoles = project.roles.length;
+  const allRolesFilled =
+    totalRoles > 0 && openRoles.length === 0 && project.status === "Recruiting";
 
   let savedByMe = false;
   if (session?.user?.id) {
@@ -102,15 +105,47 @@ export default async function ProjectDetailPage({
           )}
         </div>
         {isOwner && project.status === "Draft" && (
-          <div className="mt-3">
+          <div className="mt-4 rounded-xl border border-amber-700/40 bg-amber-500/10 px-4 py-3">
+            <p className="text-sm font-medium text-amber-100">This project is still a draft</p>
+            <p className="mt-1 text-sm text-amber-200/90">
+              Only you can see it. Finish the create flow to publish and appear in Explore.
+            </p>
             <Link
               href={`/create?draft=${encodeURIComponent(project.id)}`}
-              className="inline-block rounded-lg border border-brand bg-brand px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-light"
+              className="mt-3 inline-block rounded-lg bg-brand px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-light"
             >
               Continue editing draft →
             </Link>
           </div>
         )}
+
+        {project.status === "Recruiting" && !session && (
+          <p className="mt-3 rounded-lg border border-slate-800 bg-slate-900/50 px-3 py-2 text-sm text-slate-400">
+            <Link href="/auth/signin" className="font-medium text-brand hover:underline">
+              Sign in
+            </Link>{" "}
+            to apply for a role or save this project.
+          </p>
+        )}
+
+        {project.status === "Recruiting" && session && !isMember && !isOwner && (
+          <p className="mt-3 text-sm text-slate-400">
+            This team is recruiting. Pick a role below and send an application.
+          </p>
+        )}
+
+        {project.status === "Active" && (
+          <p className="mt-3 text-sm text-slate-500">
+            This project is active. Open roles may be closed; check the list below.
+          </p>
+        )}
+
+        {project.status === "Closed" && (
+          <p className="mt-3 text-sm text-slate-500">
+            This project is closed and is not accepting new applications.
+          </p>
+        )}
+
         {isMember && (
           <div className="mt-3 flex flex-col items-start gap-2">
             <Link
@@ -119,12 +154,15 @@ export default async function ProjectDetailPage({
             >
               Open Team Space →
             </Link>
-            <Link href="/" className="text-sm text-brand hover:underline">
-              ← Back to feed
-            </Link>
           </div>
         )}
       </div>
+
+      {!project.pitch && !project.problem && !project.solution && project.status !== "Draft" && (
+        <p className="mb-6 text-sm text-slate-500">
+          No long description was added for this project yet.
+        </p>
+      )}
 
       {project.pitch && (
         <section className="mb-6">
@@ -152,17 +190,39 @@ export default async function ProjectDetailPage({
 
       <section className="mb-6">
         <h2 className="mb-2 text-sm font-medium text-slate-400">Expectations</h2>
-        <p className="text-slate-200">
-          {project.hoursPerWeek && project.durationMonths
-            ? `${project.hoursPerWeek} hrs/week · ${project.durationMonths} months`
-            : "Not specified"}
-        </p>
+        {project.hoursPerWeek && project.durationMonths ? (
+          <p className="text-slate-200">
+            {project.hoursPerWeek} hrs/week · {project.durationMonths} months
+          </p>
+        ) : (
+          <p className="text-sm text-slate-500">
+            Time commitment not listed. Ask the owner in your application or in Team Space if you join.
+          </p>
+        )}
       </section>
 
       <section className="mb-6">
         <h2 className="mb-3 text-sm font-medium text-slate-400">Open roles</h2>
         {openRoles.length === 0 ? (
-          <p className="text-slate-500">No open roles</p>
+          <div className="rounded-xl border border-slate-800 bg-slate-900/40 px-4 py-5 text-sm text-slate-400">
+            {totalRoles === 0 ? (
+              <>
+                <p>No roles are defined for this project yet.</p>
+                {isOwner && project.status === "Draft" && (
+                  <Link
+                    href={`/create?draft=${encodeURIComponent(project.id)}`}
+                    className="mt-2 inline-block font-medium text-brand hover:underline"
+                  >
+                    Add roles in the create flow →
+                  </Link>
+                )}
+              </>
+            ) : allRolesFilled ? (
+              <p>All listed roles are filled right now. You can still save the project or follow the team for updates.</p>
+            ) : (
+              <p>No open roles at the moment.</p>
+            )}
+          </div>
         ) : (
           <div className="space-y-3">
             {openRoles.map((role) => {
@@ -224,6 +284,23 @@ export default async function ProjectDetailPage({
           </Link>
         )}
       </div>
+
+      <nav
+        className="mt-10 flex flex-wrap gap-x-4 gap-y-2 border-t border-slate-800 pt-6 text-sm text-slate-500"
+        aria-label="Page navigation"
+      >
+        <Link href="/" className="hover:text-slate-200">
+          ← Home feed
+        </Link>
+        <Link href="/explore" className="hover:text-slate-200">
+          Explore projects
+        </Link>
+        {session && (
+          <Link href="/my-projects" className="hover:text-slate-200">
+            My projects
+          </Link>
+        )}
+      </nav>
     </div>
   );
 }
