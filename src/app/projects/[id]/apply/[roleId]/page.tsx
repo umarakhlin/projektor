@@ -35,6 +35,7 @@ export default function ApplyPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
+  const [alreadyApplied, setAlreadyApplied] = useState(false);
 
   const [message, setMessage] = useState("");
   const [links, setLinks] = useState([{ url: "", label: "" }]);
@@ -61,6 +62,7 @@ export default function ApplyPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
+    setAlreadyApplied(false);
     setSubmitting(true);
 
     const validLinks = links
@@ -82,6 +84,11 @@ export default function ApplyPage() {
 
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
+      if (res.status === 409) {
+        setAlreadyApplied(true);
+        setError("");
+        return;
+      }
       setError(data.error ?? "Failed to apply");
       return;
     }
@@ -121,23 +128,35 @@ export default function ApplyPage() {
     );
   }
 
-  if (success) {
+  if (success || alreadyApplied) {
     return (
       <div className="mx-auto max-w-lg text-center">
-        <h1 className="mb-4 text-xl font-semibold text-green-400">Application sent</h1>
-        <p className="text-slate-400">
-          The creator will review your application. You&apos;ll see any offers in your Inbox.
+        <h1
+          className={`mb-4 text-xl font-semibold ${
+            alreadyApplied ? "text-amber-300" : "text-green-400"
+          }`}
+        >
+          {alreadyApplied ? "Application already sent" : "Application sent"}
+        </h1>
+        <p className="text-slate-300">
+          {alreadyApplied
+            ? "You already have an active application for this role."
+            : "The creator will review your application."}
+        </p>
+        <p className="mt-2 text-sm text-slate-500">
+          You&apos;ll see updates and offers in your Inbox.
         </p>
         <Link
           href="/inbox"
-          className="mt-6 inline-block text-brand hover:underline"
+          className="mt-6 inline-block rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand-light"
         >
-          Go to Inbox
+          Open Inbox
         </Link>
-        <span className="mx-2 text-slate-500">·</span>
-        <Link href={`/projects/${projectId}`} className="text-brand hover:underline">
-          Back to project
-        </Link>
+        <p className="mt-4 text-sm text-slate-500">
+          <Link href={`/projects/${projectId}`} className="text-brand hover:underline">
+            Back to project
+          </Link>
+        </p>
       </div>
     );
   }
@@ -160,6 +179,13 @@ export default function ApplyPage() {
           Skills: {requirements.join(", ")}
         </p>
       )}
+      <div className="mb-4 rounded-lg border border-slate-800 bg-slate-900/40 p-3 text-sm text-slate-400">
+        <p className="font-medium text-slate-200">What happens next</p>
+        <p className="mt-1">
+          After you submit, the project owner reviews your application and can move it forward or
+          send an offer. We notify you in Inbox.
+        </p>
+      </div>
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         {error && (
@@ -234,6 +260,13 @@ export default function ApplyPage() {
             Cancel
           </Link>
         </div>
+        <p className="text-xs text-slate-500">
+          Track responses any time in{" "}
+          <Link href="/inbox" className="text-brand hover:underline">
+            Inbox
+          </Link>
+          .
+        </p>
       </form>
     </div>
   );
