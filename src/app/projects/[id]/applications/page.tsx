@@ -1,6 +1,6 @@
 "use client";
 
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { parseJsonArray } from "@/lib/safe-json";
@@ -23,9 +23,10 @@ type Group = {
   applications: Application[];
 };
 
+type StatusFilter = "all" | "active" | "closed";
+
 export default function ProjectApplicationsPage() {
   const params = useParams();
-  const router = useRouter();
   const projectId = params.id as string;
 
   const [project, setProject] = useState<{ title: string } | null>(null);
@@ -33,6 +34,8 @@ export default function ProjectApplicationsPage() {
   const [loading, setLoading] = useState(true);
   const [acting, setActing] = useState<string | null>(null);
   const [errorState, setErrorState] = useState<"auth" | "forbidden" | "server" | null>(null);
+  const [actionError, setActionError] = useState("");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
 
   function getApplicationLinkUrls(rawLinks: string | null): string[] {
     const parsed = parseJsonArray<{ url?: unknown }>(rawLinks);
@@ -74,33 +77,65 @@ export default function ProjectApplicationsPage() {
       .finally(() => setLoading(false));
   }, [projectId]);
 
+  function statusBucket(status: string): "active" | "closed" {
+    return status === "Applied" || status === "InReview" ? "active" : "closed";
+  }
+
   useEffect(() => {
     loadData();
   }, [loadData]);
 
-  async function reject(appId: string) {
+  async function markInReview(appId: string) {
+    setActionError("");
     setActing(appId);
-    await fetch(`/api/applications/${appId}`, {
+    const res = await fetch(`/api/applications/${appId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "in_review" })
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setActionError(data.error ?? "Could not mark as in review.");
+      setActing(null);
+      return;
+    }
+    await loadData();
+    setActing(null);
+  }
+
+  async function reject(appId: string) {
+    setActionError("");
+    setActing(appId);
+    const res = await fetch(`/api/applications/${appId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action: "reject" })
     });
-    router.refresh();
-    const data = await fetch(`/api/projects/${projectId}/applications`).then((r) => r.json());
-    setByRole(data.byRole ?? []);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setActionError(data.error ?? "Could not reject application.");
+      setActing(null);
+      return;
+    }
+    await loadData();
     setActing(null);
   }
 
   async function sendOffer(appId: string) {
+    setActionError("");
     setActing(appId);
-    await fetch("/api/offers", {
+    const res = await fetch("/api/offers", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ applicationId: appId })
     });
-    router.refresh();
-    const data = await fetch(`/api/projects/${projectId}/applications`).then((r) => r.json());
-    setByRole(data.byRole ?? []);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setActionError(data.error ?? "Could not send offer.");
+      setActing(null);
+      return;
+    }
+    await loadData();
     setActing(null);
   }
 
@@ -145,6 +180,28 @@ export default function ProjectApplicationsPage() {
     );
   }
 
+  const filteredByRole = byRole
+    .map((group) => ({
+      ...group,
+      applications: group.applications.filter((app) =>
+        statusFilter === "all" ? true : statusBucket(app.status) === statusFilter
+      )
+    }))
+    .filter((group) => group.applications.length > 0);
+
+  const activeCount = byRole.reduce(
+    (sum, group) =>
+      sum +
+      group.applications.filter((app) => statusBucket(app.status) === "active").length,
+    0
+  );
+  const closedCount = byRole.reduce(
+    (sum, group) =>
+      sum +
+      group.applications.filter((app) => statusBucket(app.status) === "closed").length,
+    0
+  );
+
   return (
     <div className="mx-auto max-w-2xl">
       <h1 className="mb-2 text-xl font-semibold">Applications</h1>
@@ -156,12 +213,62 @@ export default function ProjectApplicationsPage() {
       >
         ← Back to project
       </Link>
+      <div className="mb-6 rounded-lg border border-slate-800 bg-slate-900/40 p-3">
+        <p className="text-sm text-slate-300">
+          Review applications, move strong candidates to{" "}
+          <span className="font-medium text-slate-100">InReview</span>, and send offers when ready.
+        </p>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => setStatusFilter("all")}
+            className={`rounded-md px-3 py-1.5 text-xs ${
+              statusFilter === "all"
+                ? "bg-brand text-white"
+                : "border border-slate-700 text-slate-400 hover:border-slate-600"
+            }`}
+          >
+            All ({activeCount + closedCount})
+          </button>
+          <button
+            type="button"
+            onClick={() => setStatusFilter("active")}
+            className={`rounded-md px-3 py-1.5 text-xs ${
+              statusFilter === "active"
+                ? "bg-brand text-white"
+                : "border border-slate-700 text-slate-400 hover:border-slate-600"
+            }`}
+          >
+            Active ({activeCount})
+          </button>
+          <button
+            type="button"
+            onClick={() => setStatusFilter("closed")}
+            className={`rounded-md px-3 py-1.5 text-xs ${
+              statusFilter === "closed"
+                ? "bg-brand text-white"
+                : "border border-slate-700 text-slate-400 hover:border-slate-600"
+            }`}
+          >
+            Closed ({closedCount})
+          </button>
+        </div>
+      </div>
+      {actionError && (
+        <div className="mb-4 rounded-lg border border-red-700/50 bg-red-500/10 px-4 py-2 text-sm text-red-300">
+          {actionError}
+        </div>
+      )}
 
-      {byRole.length === 0 ? (
-        <p className="text-slate-500">No applications yet.</p>
+      {filteredByRole.length === 0 ? (
+        <p className="text-slate-500">
+          {statusFilter === "all"
+            ? "No applications yet."
+            : `No ${statusFilter} applications right now.`}
+        </p>
       ) : (
         <div className="space-y-8">
-          {byRole.map((group) => (
+          {filteredByRole.map((group) => (
             <div key={group.role.id}>
               <h2 className="mb-3 font-medium">{group.role.title}</h2>
               <div className="space-y-4">
@@ -202,12 +309,34 @@ export default function ProjectApplicationsPage() {
                       </p>
                     )}
                     {linkUrls.length > 0 && (
-                      <p className="mb-2 text-xs text-slate-500">
-                        Links: {linkUrls.join(", ")}
-                      </p>
+                      <div className="mb-2 text-xs text-slate-500">
+                        Links:{" "}
+                        {linkUrls.map((url, idx) => (
+                          <span key={url}>
+                            {idx > 0 ? ", " : ""}
+                            <a
+                              href={url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-brand hover:underline"
+                            >
+                              open
+                            </a>
+                          </span>
+                        ))}
+                      </div>
                     )}
                     {(app.status === "Applied" || app.status === "InReview") && (
                       <div className="mt-3 flex gap-2">
+                        {app.status === "Applied" && (
+                          <button
+                            onClick={() => markInReview(app.id)}
+                            disabled={!!acting}
+                            className="rounded border border-slate-600 px-3 py-1 text-sm text-slate-200 hover:border-slate-500 disabled:opacity-50"
+                          >
+                            {acting === app.id ? "Saving…" : "Mark in review"}
+                          </button>
+                        )}
                         <button
                           onClick={() => sendOffer(app.id)}
                           disabled={!!acting}
