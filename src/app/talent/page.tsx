@@ -11,6 +11,7 @@ type Role = {
   openings: number;
   filledCount: number;
   state: string;
+  requirements?: string | null;
 };
 
 type OwnerProject = {
@@ -35,6 +36,20 @@ type InviteForm = {
   note: string;
 };
 
+function parseRequirements(raw: string | null | undefined): string[] {
+  if (!raw) return [];
+  try {
+    const arr = JSON.parse(raw);
+    if (!Array.isArray(arr)) return [];
+    return arr
+      .filter((s): s is string => typeof s === "string")
+      .map((s) => s.trim())
+      .filter(Boolean);
+  } catch {
+    return [];
+  }
+}
+
 export default function TalentPage() {
   const { status } = useSession();
   const router = useRouter();
@@ -43,6 +58,9 @@ export default function TalentPage() {
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
   const [onlyWithAvailability, setOnlyWithAvailability] = useState(false);
+  const [skillFilter, setSkillFilter] = useState("");
+  const [matchRoleId, setMatchRoleId] = useState("");
+  const [minMatch, setMinMatch] = useState<number>(0);
   const [error, setError] = useState("");
   const [globalSuccess, setGlobalSuccess] = useState("");
 
@@ -73,6 +91,29 @@ export default function TalentPage() {
       (r) => r.state !== "Filled" && r.openings - r.filledCount > 0
     );
   }, [selectedProjectForInvite]);
+
+  const allMatchableRoles = useMemo(() => {
+    return inviteProjects.flatMap((p) =>
+      p.roles
+        .filter((r) => r.state !== "Filled" && r.openings - r.filledCount > 0)
+        .map((r) => ({ ...r, projectTitle: p.title }))
+    );
+  }, [inviteProjects]);
+
+  const selectedMatchRole = useMemo(
+    () => allMatchableRoles.find((r) => r.id === matchRoleId) ?? null,
+    [allMatchableRoles, matchRoleId]
+  );
+
+  const matchRequirements = useMemo(
+    () =>
+      selectedMatchRole
+        ? parseRequirements(selectedMatchRole.requirements).map((s) =>
+            s.toLowerCase()
+          )
+        : [],
+    [selectedMatchRole]
+  );
 
   async function loadUsers(q: string) {
     const params = new URLSearchParams();
@@ -109,11 +150,47 @@ export default function TalentPage() {
     void loadInit();
   }, [status, router]);
 
+  const allSkillOptions = useMemo(() => {
+    const set = new Set<string>();
+    users.forEach((u) => u.skills.forEach((s) => set.add(s)));
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [users]);
+
+  const enrichedUsers = useMemo(() => {
+    return users.map((u) => {
+      const lowerSkills = u.skills.map((s) => s.toLowerCase());
+      const matched = matchRequirements.filter((req) =>
+        lowerSkills.includes(req)
+      );
+      const matchScore = matchRequirements.length
+        ? Math.round((matched.length / matchRequirements.length) * 100)
+        : null;
+      return { ...u, matchScore, matchedSkills: matched };
+    });
+  }, [users, matchRequirements]);
+
   const visibleUsers = useMemo(() => {
-    return users.filter((u) =>
-      onlyWithAvailability ? Boolean(u.availability?.trim()) : true
-    );
-  }, [users, onlyWithAvailability]);
+    return enrichedUsers
+      .filter((u) =>
+        onlyWithAvailability ? Boolean(u.availability?.trim()) : true
+      )
+      .filter((u) =>
+        skillFilter
+          ? u.skills.map((s) => s.toLowerCase()).includes(skillFilter.toLowerCase())
+          : true
+      )
+      .filter((u) => {
+        if (minMatch <= 0) return true;
+        if (u.matchScore == null) return false;
+        return u.matchScore >= minMatch;
+      })
+      .sort((a, b) => {
+        const scoreA = a.matchScore ?? -1;
+        const scoreB = b.matchScore ?? -1;
+        if (scoreA !== scoreB) return scoreB - scoreA;
+        return (a.name ?? "").localeCompare(b.name ?? "");
+      });
+  }, [enrichedUsers, onlyWithAvailability, skillFilter, minMatch]);
 
   async function refreshUsers() {
     setError("");
@@ -124,14 +201,29 @@ export default function TalentPage() {
     }
   }
 
+  function resetFilters() {
+    setQuery("");
+    setSkillFilter("");
+    setMatchRoleId("");
+    setMinMatch(0);
+    setOnlyWithAvailability(false);
+    setError("");
+  }
+
   function openInviteFor(userId: string) {
     const firstProject = inviteProjects[0];
     const firstRole = firstProject?.roles?.find(
       (r) => r.state !== "Filled" && r.openings - r.filledCount > 0
     );
+    const defaultProjectId = selectedMatchRole
+      ? inviteProjects.find((p) =>
+          p.roles.some((r) => r.id === selectedMatchRole.id)
+        )?.id ?? firstProject?.id ?? ""
+      : firstProject?.id ?? "";
+    const defaultRoleId = selectedMatchRole?.id ?? firstRole?.id ?? "";
     setInviteForm({
-      projectId: firstProject?.id ?? "",
-      roleId: firstRole?.id ?? "",
+      projectId: defaultProjectId,
+      roleId: defaultRoleId,
       note: ""
     });
     setInviteError("");
@@ -184,8 +276,8 @@ export default function TalentPage() {
     <div className="mx-auto max-w-3xl">
       <h1 className="text-2xl font-semibold">Find teammates</h1>
       <p className="mt-2 text-sm text-slate-400">
-        Browse all users on Projektor. Pick someone you like and invite them to
-        one of your projects.
+        Browse all users on Projektor. Use filters to narrow down, then invite
+        anyone to any of your projects.
       </p>
 
       <div className="mt-6 rounded-lg border border-slate-800 bg-slate-900/40 p-4">
@@ -204,15 +296,88 @@ export default function TalentPage() {
             Search
           </button>
         </div>
-        <label className="mt-3 flex items-center gap-2 text-sm text-slate-300">
-          <input
-            type="checkbox"
-            checked={onlyWithAvailability}
-            onChange={(e) => setOnlyWithAvailability(e.target.checked)}
-            className="h-4 w-4 rounded border-slate-600 bg-slate-900"
-          />
-          Only users with availability filled
-        </label>
+
+        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+          <label className="flex flex-col gap-1">
+            <span className="text-xs text-slate-500">Filter by skill</span>
+            <select
+              value={skillFilter}
+              onChange={(e) => setSkillFilter(e.target.value)}
+              className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100"
+            >
+              <option value="">Any skill</option>
+              {allSkillOptions.map((s) => (
+                <option key={s} value={s}>
+                  {s}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="flex flex-col gap-1">
+            <span className="text-xs text-slate-500">Match for role</span>
+            <select
+              value={matchRoleId}
+              onChange={(e) => setMatchRoleId(e.target.value)}
+              className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100"
+            >
+              <option value="">No role comparison</option>
+              {allMatchableRoles.map((r) => (
+                <option key={r.id} value={r.id}>
+                  {r.projectTitle} · {r.title}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="flex flex-col gap-1">
+            <span className="text-xs text-slate-500">Minimum match score</span>
+            <select
+              value={minMatch}
+              onChange={(e) => setMinMatch(Number(e.target.value))}
+              disabled={!selectedMatchRole}
+              className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 disabled:opacity-50"
+            >
+              <option value={0}>Any</option>
+              <option value={40}>40%+</option>
+              <option value={60}>60%+</option>
+              <option value={80}>80%+</option>
+            </select>
+          </label>
+
+          <label className="mt-6 flex items-center gap-2 text-sm text-slate-300 sm:mt-0">
+            <input
+              type="checkbox"
+              checked={onlyWithAvailability}
+              onChange={(e) => setOnlyWithAvailability(e.target.checked)}
+              className="h-4 w-4 rounded border-slate-600 bg-slate-900"
+            />
+            Only users with availability filled
+          </label>
+        </div>
+
+        <div className="mt-2 flex justify-end">
+          <button
+            type="button"
+            onClick={resetFilters}
+            className="rounded-lg border border-slate-700 px-3 py-1.5 text-xs text-slate-300 hover:border-slate-500"
+          >
+            Reset filters
+          </button>
+        </div>
+
+        {selectedMatchRole && matchRequirements.length > 0 && (
+          <p className="mt-3 text-xs text-slate-400">
+            Match score for <strong>{selectedMatchRole.title}</strong> based on:{" "}
+            {matchRequirements.join(", ")}.
+          </p>
+        )}
+        {selectedMatchRole && matchRequirements.length === 0 && (
+          <p className="mt-3 text-xs text-slate-400">
+            This role has no required skills listed, so match score is not
+            calculated.
+          </p>
+        )}
       </div>
 
       {error && (
@@ -265,6 +430,14 @@ export default function TalentPage() {
                     {u.availability && (
                       <p className="mt-1 text-xs text-slate-400">
                         Availability: {u.availability}
+                      </p>
+                    )}
+                    {u.matchScore != null && (
+                      <p className="mt-1 text-xs text-emerald-300">
+                        Match: {u.matchScore}%{" "}
+                        {u.matchedSkills.length > 0
+                          ? `(${u.matchedSkills.join(", ")})`
+                          : "(no required skills matched yet)"}
                       </p>
                     )}
                     {u.skills.length > 0 && (
