@@ -33,12 +33,24 @@ type AppNotification = {
 
 type Membership = { project: { id: string; title: string }; role: { title: string } };
 
+type DirectMessage = {
+  id: string;
+  content: string;
+  readAt: string | null;
+  createdAt: string;
+  sender: { id: string; name: string | null; email: string | null };
+};
+
 export default function InboxPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const [offers, setOffers] = useState<Offer[]>([]);
   const [appNotifications, setAppNotifications] = useState<AppNotification[]>([]);
   const [memberships, setMemberships] = useState<Membership[]>([]);
+  const [messages, setMessages] = useState<DirectMessage[]>([]);
+  const [replyOpenId, setReplyOpenId] = useState<string | null>(null);
+  const [replyContent, setReplyContent] = useState("");
+  const [replyBusy, setReplyBusy] = useState(false);
   const [loading, setLoading] = useState(true);
   const [acting, setActing] = useState<string | null>(null);
   const [errorState, setErrorState] = useState<"auth" | "forbidden" | "server" | null>(null);
@@ -66,12 +78,14 @@ export default function InboxPage() {
     Promise.all([
       fetchOrThrow<Offer[]>("/api/offers", []),
       fetchOrThrow<AppNotification[]>("/api/me/application-notifications", []),
-      fetchOrThrow<Membership[]>("/api/me/memberships", [])
+      fetchOrThrow<Membership[]>("/api/me/memberships", []),
+      fetchOrThrow<{ messages: DirectMessage[] }>("/api/direct-messages", { messages: [] })
     ])
-      .then(([offersList, apps, mems]) => {
+      .then(([offersList, apps, mems, dm]) => {
         setOffers(Array.isArray(offersList) ? offersList : []);
         setAppNotifications(Array.isArray(apps) ? apps : []);
         setMemberships(Array.isArray(mems) ? mems : []);
+        setMessages(Array.isArray(dm?.messages) ? dm.messages : []);
       })
       .catch((e: unknown) => {
         const message = e instanceof Error ? e.message : "";
@@ -149,8 +163,39 @@ export default function InboxPage() {
   const hasOffers = offers.length > 0;
   const hasApps = appNotifications.length > 0;
   const hasChat = memberships.length > 0;
+  const hasMessages = messages.length > 0;
 
-  const inboxEmpty = !hasOffers && !hasApps && !hasChat;
+  const inboxEmpty = !hasOffers && !hasApps && !hasChat && !hasMessages;
+
+  async function markMessageRead(id: string) {
+    await fetch(`/api/direct-messages/${id}/read`, { method: "POST" }).catch(
+      () => {}
+    );
+    setMessages((prev) =>
+      prev.map((m) => (m.id === id ? { ...m, readAt: new Date().toISOString() } : m))
+    );
+  }
+
+  function openReply(messageId: string) {
+    setReplyOpenId(messageId);
+    setReplyContent("");
+  }
+
+  async function sendReply(recipientId: string) {
+    const content = replyContent.trim();
+    if (!content) return;
+    setReplyBusy(true);
+    const res = await fetch(`/api/direct-messages`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ recipientId, content })
+    });
+    setReplyBusy(false);
+    if (res.ok) {
+      setReplyOpenId(null);
+      setReplyContent("");
+    }
+  }
 
   return (
     <div className="mx-auto max-w-lg">
@@ -158,7 +203,9 @@ export default function InboxPage() {
       <p className="mt-2 mb-6 text-sm leading-relaxed text-slate-400">
         <strong className="font-medium text-slate-300">Offers</strong> are invitations after a creator
         wants you on their team. <strong className="font-medium text-slate-300">Applications</strong>{" "}
-        are updates for projects you own. <strong className="font-medium text-slate-300">Team chat</strong>{" "}
+        are updates for projects you own.{" "}
+        <strong className="font-medium text-slate-300">Messages</strong> are direct messages from other
+        users. <strong className="font-medium text-slate-300">Team chat</strong>{" "}
         lists projects where you are already a member.
       </p>
 
@@ -233,6 +280,105 @@ export default function InboxPage() {
                     </div>
                   </div>
                 ))}
+              </div>
+            )}
+          </section>
+
+          {/* Direct messages */}
+          <section className="mb-8">
+            <h2 className="mb-2 text-sm font-medium uppercase tracking-wide text-slate-500">
+              Messages
+            </h2>
+            {!hasMessages ? (
+              <div className="rounded-xl border border-slate-800 bg-slate-900/40 px-4 py-4 text-sm text-slate-400">
+                <p>
+                  No messages yet. When someone messages you from Talent or your
+                  profile, it appears here.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {messages.map((m) => {
+                  const isUnread = !m.readAt;
+                  const isReplyOpen = replyOpenId === m.id;
+                  return (
+                    <div
+                      key={m.id}
+                      className={`rounded-lg border bg-slate-900/50 p-3 ${isUnread ? "border-brand/40" : "border-slate-700"}`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="font-medium text-slate-200">
+                            {m.sender.name ?? "User"}
+                            {isUnread && (
+                              <span className="ml-2 rounded-full bg-brand/20 px-2 py-0.5 text-xs text-brand">
+                                New
+                              </span>
+                            )}
+                          </p>
+                          <p className="mt-1 whitespace-pre-wrap text-sm text-slate-300">
+                            {m.content}
+                          </p>
+                          <p className="mt-1 text-xs text-slate-500">
+                            {new Date(m.createdAt).toLocaleString()}
+                          </p>
+                        </div>
+                        <div className="flex flex-col items-end gap-1">
+                          {isUnread && (
+                            <button
+                              type="button"
+                              onClick={() => markMessageRead(m.id)}
+                              className="rounded-lg border border-slate-700 px-2 py-1 text-xs text-slate-300 hover:border-slate-500"
+                            >
+                              Mark read
+                            </button>
+                          )}
+                          {!isReplyOpen && (
+                            <button
+                              type="button"
+                              onClick={() => openReply(m.id)}
+                              className="rounded-lg bg-brand px-3 py-1.5 text-xs font-medium text-white hover:bg-brand-light"
+                            >
+                              Reply
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                      {isReplyOpen && (
+                        <div className="mt-3 rounded-lg border border-slate-800 bg-slate-950/60 p-3">
+                          <textarea
+                            value={replyContent}
+                            onChange={(e) => setReplyContent(e.target.value)}
+                            rows={3}
+                            maxLength={2000}
+                            placeholder="Write a reply..."
+                            className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500"
+                          />
+                          <div className="mt-2 flex justify-end gap-2">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setReplyOpenId(null);
+                                setReplyContent("");
+                              }}
+                              className="rounded-lg border border-slate-700 px-3 py-1.5 text-xs text-slate-200 hover:border-slate-500"
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              type="button"
+                              disabled={replyBusy || !replyContent.trim()}
+                              onClick={() => sendReply(m.sender.id)}
+                              className="rounded-lg bg-brand px-3 py-1.5 text-xs font-medium text-white hover:bg-brand-light disabled:opacity-50"
+                            >
+                              {replyBusy ? "Sending..." : "Send reply"}
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             )}
           </section>

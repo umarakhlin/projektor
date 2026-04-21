@@ -74,6 +74,12 @@ export default function TalentPage() {
   const [inviteError, setInviteError] = useState("");
   const [recentlyInvited, setRecentlyInvited] = useState<Set<string>>(new Set());
 
+  const [openMessageUserId, setOpenMessageUserId] = useState<string | null>(null);
+  const [messageContent, setMessageContent] = useState("");
+  const [messageBusy, setMessageBusy] = useState(false);
+  const [messageError, setMessageError] = useState("");
+  const [recentlyMessaged, setRecentlyMessaged] = useState<Set<string>>(new Set());
+
   const inviteProjects = useMemo(
     () =>
       projects.filter((p) => p.status === "Recruiting" || p.status === "Active"),
@@ -234,6 +240,49 @@ export default function TalentPage() {
   function closeInvite() {
     setOpenInviteUserId(null);
     setInviteError("");
+  }
+
+  function openMessageFor(userId: string) {
+    setOpenInviteUserId(null);
+    setMessageContent("");
+    setMessageError("");
+    setGlobalSuccess("");
+    setOpenMessageUserId(userId);
+  }
+
+  function closeMessage() {
+    setOpenMessageUserId(null);
+    setMessageError("");
+  }
+
+  async function sendMessage(userId: string) {
+    const content = messageContent.trim();
+    if (!content) {
+      setMessageError("Message cannot be empty.");
+      return;
+    }
+    setMessageBusy(true);
+    setMessageError("");
+    const res = await fetch(`/api/direct-messages`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ recipientId: userId, content })
+    });
+    setMessageBusy(false);
+
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      setMessageError(data.error ?? "Could not send message.");
+      return;
+    }
+    setRecentlyMessaged((prev) => {
+      const next = new Set(prev);
+      next.add(userId);
+      return next;
+    });
+    setOpenMessageUserId(null);
+    setMessageContent("");
+    setGlobalSuccess("Message sent. They will see it in their Inbox.");
   }
 
   async function submitInvite(userId: string) {
@@ -398,6 +447,8 @@ export default function TalentPage() {
           {visibleUsers.map((u) => {
             const isInviteOpen = openInviteUserId === u.id;
             const wasInvited = recentlyInvited.has(u.id);
+            const isMessageOpen = openMessageUserId === u.id;
+            const wasMessaged = recentlyMessaged.has(u.id);
             return (
               <div
                 key={u.id}
@@ -453,27 +504,50 @@ export default function TalentPage() {
                       </div>
                     )}
                   </div>
-                  {wasInvited ? (
-                    <span className="rounded-lg border border-emerald-700/40 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-300">
-                      Invite sent
-                    </span>
-                  ) : isInviteOpen ? (
-                    <button
-                      type="button"
-                      onClick={closeInvite}
-                      className="rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-200 hover:border-slate-500"
-                    >
-                      Cancel
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => openInviteFor(u.id)}
-                      className="rounded-lg bg-brand px-3 py-2 text-sm font-medium text-white hover:bg-brand-light"
-                    >
-                      Invite to project
-                    </button>
-                  )}
+                  <div className="flex flex-col items-end gap-2">
+                    {wasInvited ? (
+                      <span className="rounded-lg border border-emerald-700/40 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-300">
+                        Invite sent
+                      </span>
+                    ) : isInviteOpen ? (
+                      <button
+                        type="button"
+                        onClick={closeInvite}
+                        className="rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-200 hover:border-slate-500"
+                      >
+                        Cancel
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => openInviteFor(u.id)}
+                        className="rounded-lg bg-brand px-3 py-2 text-sm font-medium text-white hover:bg-brand-light"
+                      >
+                        Invite to project
+                      </button>
+                    )}
+                    {wasMessaged ? (
+                      <span className="rounded-lg border border-sky-700/40 bg-sky-500/10 px-3 py-2 text-xs text-sky-300">
+                        Message sent
+                      </span>
+                    ) : isMessageOpen ? (
+                      <button
+                        type="button"
+                        onClick={closeMessage}
+                        className="rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-200 hover:border-slate-500"
+                      >
+                        Cancel
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => openMessageFor(u.id)}
+                        className="rounded-lg border border-slate-600 px-3 py-2 text-sm text-slate-200 hover:border-slate-500"
+                      >
+                        Send message
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 {isInviteOpen && (
@@ -592,6 +666,46 @@ export default function TalentPage() {
                         </button>
                       </div>
                     )}
+                  </div>
+                )}
+
+                {isMessageOpen && (
+                  <div className="mt-4 rounded-lg border border-slate-800 bg-slate-950/60 p-3">
+                    <label className="flex flex-col gap-1">
+                      <span className="text-xs text-slate-500">
+                        Message to {u.name ?? "this user"}
+                      </span>
+                      <textarea
+                        value={messageContent}
+                        onChange={(e) => setMessageContent(e.target.value)}
+                        rows={4}
+                        maxLength={2000}
+                        placeholder="Hi! I saw your profile and thought you might be a good fit for..."
+                        className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500"
+                      />
+                    </label>
+                    {messageError && (
+                      <div className="mt-3 rounded-lg border border-red-700/50 bg-red-500/10 px-3 py-2 text-xs text-red-300">
+                        {messageError}
+                      </div>
+                    )}
+                    <div className="mt-3 flex justify-end gap-2">
+                      <button
+                        type="button"
+                        onClick={closeMessage}
+                        className="rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-200 hover:border-slate-500"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        disabled={messageBusy || !messageContent.trim()}
+                        onClick={() => sendMessage(u.id)}
+                        className="rounded-lg bg-brand px-3 py-2 text-sm font-medium text-white hover:bg-brand-light disabled:opacity-50"
+                      >
+                        {messageBusy ? "Sending..." : "Send message"}
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
