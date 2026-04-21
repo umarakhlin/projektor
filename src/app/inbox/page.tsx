@@ -38,7 +38,15 @@ type DirectMessage = {
   content: string;
   readAt: string | null;
   createdAt: string;
-  sender: { id: string; name: string | null; email: string | null };
+  direction: "in" | "out";
+  partner: { id: string; name: string | null; email: string | null };
+};
+
+type Conversation = {
+  partner: { id: string; name: string | null; email: string | null };
+  messages: DirectMessage[];
+  unreadCount: number;
+  lastAt: string;
 };
 
 export default function InboxPage() {
@@ -48,7 +56,7 @@ export default function InboxPage() {
   const [appNotifications, setAppNotifications] = useState<AppNotification[]>([]);
   const [memberships, setMemberships] = useState<Membership[]>([]);
   const [messages, setMessages] = useState<DirectMessage[]>([]);
-  const [replyOpenId, setReplyOpenId] = useState<string | null>(null);
+  const [replyOpenPartnerId, setReplyOpenPartnerId] = useState<string | null>(null);
   const [replyContent, setReplyContent] = useState("");
   const [replyBusy, setReplyBusy] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -167,6 +175,35 @@ export default function InboxPage() {
 
   const inboxEmpty = !hasOffers && !hasApps && !hasChat && !hasMessages;
 
+  const conversations: Conversation[] = (() => {
+    const map = new Map<string, Conversation>();
+    [...messages]
+      .sort(
+        (a, b) =>
+          new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+      )
+      .forEach((m) => {
+        const existing = map.get(m.partner.id);
+        if (existing) {
+          existing.messages.push(m);
+          if (m.direction === "in" && !m.readAt) existing.unreadCount += 1;
+          if (new Date(m.createdAt) > new Date(existing.lastAt)) {
+            existing.lastAt = m.createdAt;
+          }
+        } else {
+          map.set(m.partner.id, {
+            partner: m.partner,
+            messages: [m],
+            unreadCount: m.direction === "in" && !m.readAt ? 1 : 0,
+            lastAt: m.createdAt
+          });
+        }
+      });
+    return Array.from(map.values()).sort(
+      (a, b) => new Date(b.lastAt).getTime() - new Date(a.lastAt).getTime()
+    );
+  })();
+
   async function markMessageRead(id: string) {
     await fetch(`/api/direct-messages/${id}/read`, { method: "POST" }).catch(
       () => {}
@@ -176,24 +213,45 @@ export default function InboxPage() {
     );
   }
 
-  function openReply(messageId: string) {
-    setReplyOpenId(messageId);
+  async function markConversationRead(partnerId: string) {
+    const unread = messages.filter(
+      (m) => m.partner.id === partnerId && m.direction === "in" && !m.readAt
+    );
+    await Promise.all(
+      unread.map((m) =>
+        fetch(`/api/direct-messages/${m.id}/read`, { method: "POST" }).catch(
+          () => {}
+        )
+      )
+    );
+    setMessages((prev) =>
+      prev.map((m) =>
+        m.partner.id === partnerId && m.direction === "in" && !m.readAt
+          ? { ...m, readAt: new Date().toISOString() }
+          : m
+      )
+    );
+  }
+
+  function openReply(partnerId: string) {
+    setReplyOpenPartnerId(partnerId);
     setReplyContent("");
   }
 
-  async function sendReply(recipientId: string) {
+  async function sendReply(partnerId: string) {
     const content = replyContent.trim();
     if (!content) return;
     setReplyBusy(true);
     const res = await fetch(`/api/direct-messages`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ recipientId, content })
+      body: JSON.stringify({ recipientId: partnerId, content })
     });
     setReplyBusy(false);
     if (res.ok) {
-      setReplyOpenId(null);
+      setReplyOpenPartnerId(null);
       setReplyContent("");
+      loadData();
     }
   }
 
@@ -292,57 +350,88 @@ export default function InboxPage() {
             {!hasMessages ? (
               <div className="rounded-xl border border-slate-800 bg-slate-900/40 px-4 py-4 text-sm text-slate-400">
                 <p>
-                  No messages yet. When someone messages you from Talent or your
-                  profile, it appears here.
+                  No messages yet. Messages you send or receive from Talent
+                  appear here.
                 </p>
               </div>
             ) : (
-              <div className="space-y-2">
-                {messages.map((m) => {
-                  const isUnread = !m.readAt;
-                  const isReplyOpen = replyOpenId === m.id;
+              <div className="space-y-3">
+                {conversations.map((conv) => {
+                  const isReplyOpen = replyOpenPartnerId === conv.partner.id;
                   return (
                     <div
-                      key={m.id}
-                      className={`rounded-lg border bg-slate-900/50 p-3 ${isUnread ? "border-brand/40" : "border-slate-700"}`}
+                      key={conv.partner.id}
+                      className={`rounded-lg border bg-slate-900/50 p-3 ${conv.unreadCount > 0 ? "border-brand/40" : "border-slate-700"}`}
                     >
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
                           <p className="font-medium text-slate-200">
-                            {m.sender.name ?? "User"}
-                            {isUnread && (
+                            {conv.partner.name ?? "User"}
+                            {conv.unreadCount > 0 && (
                               <span className="ml-2 rounded-full bg-brand/20 px-2 py-0.5 text-xs text-brand">
-                                New
+                                {conv.unreadCount} new
                               </span>
                             )}
                           </p>
-                          <p className="mt-1 whitespace-pre-wrap text-sm text-slate-300">
-                            {m.content}
-                          </p>
                           <p className="mt-1 text-xs text-slate-500">
-                            {new Date(m.createdAt).toLocaleString()}
+                            {new Date(conv.lastAt).toLocaleString()}
                           </p>
                         </div>
                         <div className="flex flex-col items-end gap-1">
-                          {isUnread && (
+                          {conv.unreadCount > 0 && (
                             <button
                               type="button"
-                              onClick={() => markMessageRead(m.id)}
+                              onClick={() => markConversationRead(conv.partner.id)}
                               className="rounded-lg border border-slate-700 px-2 py-1 text-xs text-slate-300 hover:border-slate-500"
                             >
-                              Mark read
+                              Mark all read
                             </button>
                           )}
                           {!isReplyOpen && (
                             <button
                               type="button"
-                              onClick={() => openReply(m.id)}
+                              onClick={() => openReply(conv.partner.id)}
                               className="rounded-lg bg-brand px-3 py-1.5 text-xs font-medium text-white hover:bg-brand-light"
                             >
                               Reply
                             </button>
                           )}
                         </div>
+                      </div>
+                      <div className="mt-3 space-y-2">
+                        {conv.messages.map((m) => (
+                          <div
+                            key={m.id}
+                            className={`flex ${m.direction === "out" ? "justify-end" : "justify-start"}`}
+                          >
+                            <div
+                              className={`max-w-[80%] rounded-lg px-3 py-2 text-sm ${
+                                m.direction === "out"
+                                  ? "bg-brand/20 text-slate-100"
+                                  : "bg-slate-800 text-slate-200"
+                              }`}
+                            >
+                              <p className="whitespace-pre-wrap">{m.content}</p>
+                              <p className="mt-1 text-[10px] uppercase tracking-wide text-slate-500">
+                                {m.direction === "out" ? "You" : conv.partner.name ?? "Them"} ·{" "}
+                                {new Date(m.createdAt).toLocaleString()}
+                                {m.direction === "in" && !m.readAt && (
+                                  <>
+                                    {" "}
+                                    ·{" "}
+                                    <button
+                                      type="button"
+                                      onClick={() => markMessageRead(m.id)}
+                                      className="text-brand hover:underline"
+                                    >
+                                      mark read
+                                    </button>
+                                  </>
+                                )}
+                              </p>
+                            </div>
+                          </div>
+                        ))}
                       </div>
                       {isReplyOpen && (
                         <div className="mt-3 rounded-lg border border-slate-800 bg-slate-950/60 p-3">
@@ -358,7 +447,7 @@ export default function InboxPage() {
                             <button
                               type="button"
                               onClick={() => {
-                                setReplyOpenId(null);
+                                setReplyOpenPartnerId(null);
                                 setReplyContent("");
                               }}
                               className="rounded-lg border border-slate-700 px-3 py-1.5 text-xs text-slate-200 hover:border-slate-500"
@@ -368,7 +457,7 @@ export default function InboxPage() {
                             <button
                               type="button"
                               disabled={replyBusy || !replyContent.trim()}
-                              onClick={() => sendReply(m.sender.id)}
+                              onClick={() => sendReply(conv.partner.id)}
                               className="rounded-lg bg-brand px-3 py-1.5 text-xs font-medium text-white hover:bg-brand-light disabled:opacity-50"
                             >
                               {replyBusy ? "Sending..." : "Send reply"}

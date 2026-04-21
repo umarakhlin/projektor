@@ -13,15 +13,31 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const messages = await prisma.directMessage.findMany({
-    where: { recipientId: session.user.id },
+  const userId = session.user.id;
+
+  const rows = await prisma.directMessage.findMany({
+    where: {
+      OR: [{ recipientId: userId }, { senderId: userId }]
+    },
     orderBy: { createdAt: "desc" },
-    take: 100,
+    take: 500,
     include: {
-      sender: {
-        select: { id: true, name: true, email: true }
-      }
+      sender: { select: { id: true, name: true, email: true } },
+      recipient: { select: { id: true, name: true, email: true } }
     }
+  });
+
+  const messages = rows.map((m) => {
+    const direction = m.senderId === userId ? "out" : "in";
+    const partner = direction === "out" ? m.recipient : m.sender;
+    return {
+      id: m.id,
+      content: m.content,
+      readAt: m.readAt,
+      createdAt: m.createdAt,
+      direction,
+      partner
+    };
   });
 
   return NextResponse.json({ messages });
