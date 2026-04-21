@@ -13,6 +13,7 @@ export const config = {
     "/inbox/:path*",
     "/team-space",
     "/talent",
+    "/messages/:path*",
     "/profile/:path*",
     "/admin/:path*",
     "/projects/:id/space"

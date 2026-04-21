@@ -56,9 +56,6 @@ export default function InboxPage() {
   const [appNotifications, setAppNotifications] = useState<AppNotification[]>([]);
   const [memberships, setMemberships] = useState<Membership[]>([]);
   const [messages, setMessages] = useState<DirectMessage[]>([]);
-  const [replyOpenPartnerId, setReplyOpenPartnerId] = useState<string | null>(null);
-  const [replyContent, setReplyContent] = useState("");
-  const [replyBusy, setReplyBusy] = useState(false);
   const [loading, setLoading] = useState(true);
   const [acting, setActing] = useState<string | null>(null);
   const [errorState, setErrorState] = useState<"auth" | "forbidden" | "server" | null>(null);
@@ -204,56 +201,6 @@ export default function InboxPage() {
     );
   })();
 
-  async function markMessageRead(id: string) {
-    await fetch(`/api/direct-messages/${id}/read`, { method: "POST" }).catch(
-      () => {}
-    );
-    setMessages((prev) =>
-      prev.map((m) => (m.id === id ? { ...m, readAt: new Date().toISOString() } : m))
-    );
-  }
-
-  async function markConversationRead(partnerId: string) {
-    const unread = messages.filter(
-      (m) => m.partner.id === partnerId && m.direction === "in" && !m.readAt
-    );
-    await Promise.all(
-      unread.map((m) =>
-        fetch(`/api/direct-messages/${m.id}/read`, { method: "POST" }).catch(
-          () => {}
-        )
-      )
-    );
-    setMessages((prev) =>
-      prev.map((m) =>
-        m.partner.id === partnerId && m.direction === "in" && !m.readAt
-          ? { ...m, readAt: new Date().toISOString() }
-          : m
-      )
-    );
-  }
-
-  function openReply(partnerId: string) {
-    setReplyOpenPartnerId(partnerId);
-    setReplyContent("");
-  }
-
-  async function sendReply(partnerId: string) {
-    const content = replyContent.trim();
-    if (!content) return;
-    setReplyBusy(true);
-    const res = await fetch(`/api/direct-messages`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ recipientId: partnerId, content })
-    });
-    setReplyBusy(false);
-    if (res.ok) {
-      setReplyOpenPartnerId(null);
-      setReplyContent("");
-      loadData();
-    }
-  }
 
   return (
     <div className="mx-auto max-w-lg">
@@ -355,117 +302,42 @@ export default function InboxPage() {
                 </p>
               </div>
             ) : (
-              <div className="space-y-3">
+              <div className="space-y-2">
                 {conversations.map((conv) => {
-                  const isReplyOpen = replyOpenPartnerId === conv.partner.id;
+                  const last = conv.messages[conv.messages.length - 1];
+                  const preview = last
+                    ? `${last.direction === "out" ? "You: " : ""}${last.content}`
+                    : "";
                   return (
-                    <div
+                    <Link
                       key={conv.partner.id}
-                      className={`rounded-lg border bg-slate-900/50 p-3 ${conv.unreadCount > 0 ? "border-brand/40" : "border-slate-700"}`}
+                      href={`/messages/${conv.partner.id}`}
+                      className={`block rounded-lg border bg-slate-900/50 p-3 transition hover:border-slate-600 ${conv.unreadCount > 0 ? "border-brand/40" : "border-slate-700"}`}
                     >
                       <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <p className="font-medium text-slate-200">
-                            {conv.partner.name ?? "User"}
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-700 bg-slate-800 text-xs text-slate-300">
+                              {(conv.partner.name?.[0] ?? "U").toUpperCase()}
+                            </span>
+                            <p className="truncate font-medium text-slate-200">
+                              {conv.partner.name ?? "User"}
+                            </p>
                             {conv.unreadCount > 0 && (
-                              <span className="ml-2 rounded-full bg-brand/20 px-2 py-0.5 text-xs text-brand">
-                                {conv.unreadCount} new
+                              <span className="ml-auto rounded-full bg-brand px-2 py-0.5 text-xs font-medium text-white">
+                                {conv.unreadCount}
                               </span>
                             )}
-                          </p>
-                          <p className="mt-1 text-xs text-slate-500">
-                            {new Date(conv.lastAt).toLocaleString()}
-                          </p>
-                        </div>
-                        <div className="flex flex-col items-end gap-1">
-                          {conv.unreadCount > 0 && (
-                            <button
-                              type="button"
-                              onClick={() => markConversationRead(conv.partner.id)}
-                              className="rounded-lg border border-slate-700 px-2 py-1 text-xs text-slate-300 hover:border-slate-500"
-                            >
-                              Mark all read
-                            </button>
-                          )}
-                          {!isReplyOpen && (
-                            <button
-                              type="button"
-                              onClick={() => openReply(conv.partner.id)}
-                              className="rounded-lg bg-brand px-3 py-1.5 text-xs font-medium text-white hover:bg-brand-light"
-                            >
-                              Reply
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                      <div className="mt-3 space-y-2">
-                        {conv.messages.map((m) => (
-                          <div
-                            key={m.id}
-                            className={`flex ${m.direction === "out" ? "justify-end" : "justify-start"}`}
-                          >
-                            <div
-                              className={`max-w-[80%] rounded-lg px-3 py-2 text-sm ${
-                                m.direction === "out"
-                                  ? "bg-brand/20 text-slate-100"
-                                  : "bg-slate-800 text-slate-200"
-                              }`}
-                            >
-                              <p className="whitespace-pre-wrap">{m.content}</p>
-                              <p className="mt-1 text-[10px] uppercase tracking-wide text-slate-500">
-                                {m.direction === "out" ? "You" : conv.partner.name ?? "Them"} ·{" "}
-                                {new Date(m.createdAt).toLocaleString()}
-                                {m.direction === "in" && !m.readAt && (
-                                  <>
-                                    {" "}
-                                    ·{" "}
-                                    <button
-                                      type="button"
-                                      onClick={() => markMessageRead(m.id)}
-                                      className="text-brand hover:underline"
-                                    >
-                                      mark read
-                                    </button>
-                                  </>
-                                )}
-                              </p>
-                            </div>
                           </div>
-                        ))}
-                      </div>
-                      {isReplyOpen && (
-                        <div className="mt-3 rounded-lg border border-slate-800 bg-slate-950/60 p-3">
-                          <textarea
-                            value={replyContent}
-                            onChange={(e) => setReplyContent(e.target.value)}
-                            rows={3}
-                            maxLength={2000}
-                            placeholder="Write a reply..."
-                            className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500"
-                          />
-                          <div className="mt-2 flex justify-end gap-2">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setReplyOpenPartnerId(null);
-                                setReplyContent("");
-                              }}
-                              className="rounded-lg border border-slate-700 px-3 py-1.5 text-xs text-slate-200 hover:border-slate-500"
-                            >
-                              Cancel
-                            </button>
-                            <button
-                              type="button"
-                              disabled={replyBusy || !replyContent.trim()}
-                              onClick={() => sendReply(conv.partner.id)}
-                              className="rounded-lg bg-brand px-3 py-1.5 text-xs font-medium text-white hover:bg-brand-light disabled:opacity-50"
-                            >
-                              {replyBusy ? "Sending..." : "Send reply"}
-                            </button>
-                          </div>
+                          <p className="mt-1 line-clamp-1 text-xs text-slate-400">
+                            {preview}
+                          </p>
                         </div>
-                      )}
-                    </div>
+                        <p className="whitespace-nowrap text-[10px] text-slate-500">
+                          {new Date(conv.lastAt).toLocaleDateString()}
+                        </p>
+                      </div>
+                    </Link>
                   );
                 })}
               </div>
