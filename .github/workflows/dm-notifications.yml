@@ -1,0 +1,31 @@
+name: DM Email Notifications
+
+on:
+  schedule:
+    # Runs every 5 minutes (UTC). GitHub may delay scheduled jobs
+    # under load, so effective cadence is ~5-10 minutes.
+    - cron: "*/5 * * * *"
+  workflow_dispatch: {}
+
+concurrency:
+  group: dm-notifications
+  cancel-in-progress: false
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call cron endpoint
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "${APP_URL}" ]; then
+            echo "APP_URL secret is not set"
+            exit 1
+          fi
+          echo "Calling ${APP_URL}/api/cron/dm-notifications"
+          curl --fail-with-body --show-error --silent --max-time 30 \
+            -H "Authorization: Bearer ${CRON_SECRET}" \
+            "${APP_URL}/api/cron/dm-notifications"
+          echo ""
