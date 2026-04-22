@@ -13,7 +13,11 @@ type Profile = {
   skills: string[];
   links: { url: string; label?: string }[];
   availability: string | null;
-  settings: { showEmail?: boolean; avatarUrl?: string };
+  settings: {
+    showEmail?: boolean;
+    avatarUrl?: string;
+    dmEmailNotifications?: boolean;
+  };
 };
 
 const SKILL_OPTIONS = [
@@ -43,6 +47,7 @@ export default function ProfilePage() {
   const [links, setLinks] = useState<{ url: string; label?: string }[]>([]);
   const [availability, setAvailability] = useState("");
   const [showEmail, setShowEmail] = useState(true);
+  const [dmEmailNotifications, setDmEmailNotifications] = useState(true);
   const [avatarUrl, setAvatarUrl] = useState("");
   const [editingName, setEditingName] = useState(false);
   const [savedHint, setSavedHint] = useState("");
@@ -65,6 +70,7 @@ export default function ProfilePage() {
         setLinks(data.links?.length ? data.links : []);
         setAvailability(data.availability ?? "");
         setShowEmail(data.settings?.showEmail ?? true);
+        setDmEmailNotifications(data.settings?.dmEmailNotifications ?? true);
         setAvatarUrl(data.settings?.avatarUrl ?? "");
         initializedRef.current = true;
       })
@@ -90,7 +96,11 @@ export default function ProfilePage() {
         skills,
         links: validLinks,
         availability: availability || null,
-        settings: { showEmail, avatarUrl: avatarUrl.trim() || undefined }
+        settings: {
+          showEmail,
+          dmEmailNotifications,
+          avatarUrl: avatarUrl.trim() || undefined
+        }
       })
     });
 
@@ -389,6 +399,22 @@ export default function ProfilePage() {
           />
           <span className="text-sm text-slate-300">
             Show email on public profile (visible to creators when reviewing applications)
+          </span>
+        </label>
+
+        <label className="flex items-start gap-2">
+          <input
+            type="checkbox"
+            checked={dmEmailNotifications}
+            onChange={(e) => setDmEmailNotifications(e.target.checked)}
+            className="mt-0.5 rounded border-slate-600 bg-slate-900 text-brand focus:ring-brand"
+          />
+          <span className="text-sm text-slate-300">
+            Email me about new messages
+            <span className="block text-xs text-slate-500">
+              Only if you haven&apos;t seen them within a few minutes. Bursts from
+              the same sender are combined into a single email.
+            </span>
           </span>
         </label>
 

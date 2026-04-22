@@ -15,10 +15,12 @@ export function HeaderAuth() {
   const pathname = usePathname();
   const [teamUnread, setTeamUnread] = useState<number>(0);
   const [inboxUnread, setInboxUnread] = useState<number>(0);
+  const [messagesUnread, setMessagesUnread] = useState<number>(0);
   const [avatarUrl, setAvatarUrl] = useState<string>("");
   const [showEmailReminder, setShowEmailReminder] = useState(false);
   const [verificationBusy, setVerificationBusy] = useState(false);
-  const totalUnread = inboxUnread + teamUnread;
+  const totalUnread = inboxUnread + teamUnread + messagesUnread;
+  const inboxBadge = inboxUnread + messagesUnread;
 
   useEffect(() => {
     setShowEmailReminder(
@@ -70,6 +72,7 @@ export function HeaderAuth() {
   useEffect(() => {
     if (!session?.user?.id) {
       setInboxUnread(0);
+      setMessagesUnread(0);
       return;
     }
     const loadInboxUnread = () => {
@@ -77,14 +80,23 @@ export function HeaderAuth() {
         fetch("/api/offers").then((r) => (r.ok ? r.json() : [])),
         fetch("/api/me/application-notifications").then((r) =>
           r.ok ? r.json() : []
+        ),
+        fetch("/api/me/unread-messages").then((r) =>
+          r.ok ? r.json() : { count: 0 }
         )
       ])
-        .then(([offers, apps]) => {
+        .then(([offers, apps, messages]) => {
           const offersCount = Array.isArray(offers) ? offers.length : 0;
           const appsCount = Array.isArray(apps) ? apps.length : 0;
+          const msgCount =
+            typeof messages?.count === "number" ? messages.count : 0;
           setInboxUnread(offersCount + appsCount);
+          setMessagesUnread(msgCount);
         })
-        .catch(() => setInboxUnread(0));
+        .catch(() => {
+          setInboxUnread(0);
+          setMessagesUnread(0);
+        });
     };
     loadInboxUnread();
     const interval = setInterval(loadInboxUnread, 10000);
@@ -142,16 +154,20 @@ export function HeaderAuth() {
           <Link
             href="/inbox"
             className={`flex items-center gap-2 ${navLinkClass(pathname === "/inbox")}`}
-            title="Inbox and notifications"
+            title={
+              messagesUnread > 0
+                ? `${messagesUnread} unread message${messagesUnread === 1 ? "" : "s"}`
+                : "Inbox and notifications"
+            }
           >
             <span>Inbox</span>
             <span aria-hidden="true">🔔</span>
-            {inboxUnread > 0 && (
+            {inboxBadge > 0 && (
               <span className="inline-flex min-w-[1.25rem] justify-center rounded-full bg-brand px-1 text-[0.7rem] font-medium text-white">
-                {inboxUnread}
+                {inboxBadge}
               </span>
             )}
-            {totalUnread > inboxUnread && (
+            {totalUnread > inboxBadge && (
               <span className="inline-flex min-w-[1.25rem] justify-center rounded-full bg-brand px-1 text-[0.7rem] font-medium text-white">
                 {totalUnread}
               </span>

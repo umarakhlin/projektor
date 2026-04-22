@@ -2,7 +2,6 @@ import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { authOptions } from "@/lib/auth";
-import { sendEmail } from "@/lib/email";
 import { rateLimit, getRateLimitKey } from "@/lib/rate-limit";
 
 const MAX_LENGTH = 2000;
@@ -92,7 +91,7 @@ export async function POST(req: Request) {
 
   const recipient = await prisma.user.findUnique({
     where: { id: recipientId },
-    select: { id: true, email: true, name: true }
+    select: { id: true }
   });
   if (!recipient) {
     return NextResponse.json({ error: "Recipient not found" }, { status: 404 });
@@ -105,12 +104,6 @@ export async function POST(req: Request) {
       content
     }
   });
-
-  sendEmail(
-    recipient.email,
-    `New message on Projektor`,
-    `<p>${session.user.email ?? "Someone"} sent you a message on Projektor.</p><p><a href="${process.env.NEXTAUTH_URL || "http://localhost:3000"}/inbox">Open Inbox</a> to read and reply.</p>`
-  ).catch(() => {});
 
   return NextResponse.json({ ok: true, id: message.id });
 }
