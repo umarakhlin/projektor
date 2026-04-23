@@ -11,3 +11,84 @@ body {
   font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text",
     "Segoe UI", sans-serif;
 }
+
+/* =====================================================
+ * Accessibility widget states
+ * Applied via classes toggled on <html> by AccessibilityWidget.
+ * ===================================================== */
+
+html.a11y-font-large {
+  font-size: 112.5%;
+}
+
+html.a11y-font-xlarge {
+  font-size: 125%;
+}
+
+html.a11y-dyslexia body {
+  font-family: "OpenDyslexic", "Lexend", "Comic Sans MS", Verdana, system-ui,
+    sans-serif;
+  letter-spacing: 0.02em;
+}
+
+html.a11y-high-contrast body {
+  background-color: #000 !important;
+  color: #fff !important;
+}
+
+html.a11y-high-contrast .border-slate-700,
+html.a11y-high-contrast .border-slate-800,
+html.a11y-high-contrast .border-slate-600,
+html.a11y-high-contrast .border-slate-900 {
+  border-color: #fff !important;
+}
+
+html.a11y-high-contrast .text-slate-300,
+html.a11y-high-contrast .text-slate-400,
+html.a11y-high-contrast .text-slate-500,
+html.a11y-high-contrast .text-slate-600 {
+  color: #fff !important;
+}
+
+html.a11y-high-contrast a {
+  color: #ffff00 !important;
+  text-decoration: underline !important;
+}
+
+html.a11y-reduced-motion *,
+html.a11y-reduced-motion *::before,
+html.a11y-reduced-motion *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+  scroll-behavior: auto !important;
+}
+
+html.a11y-underline-links a {
+  text-decoration: underline !important;
+  text-underline-offset: 2px;
+}
+
+html.a11y-readable-spacing body {
+  line-height: 1.8 !important;
+  letter-spacing: 0.04em;
+  word-spacing: 0.12em;
+}
+
+html.a11y-readable-spacing p,
+html.a11y-readable-spacing li {
+  line-height: 1.9 !important;
+}
+
+.a11y-bionic-group {
+  unicode-bidi: plaintext;
+}
+
+.a11y-bionic-head {
+  font-weight: 700;
+}
+
+/* Slightly stronger emphasis when dyslexia mode is also on */
+html.a11y-dyslexia .a11y-bionic-head {
+  font-weight: 800;
+}

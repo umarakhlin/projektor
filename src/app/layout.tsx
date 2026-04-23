@@ -3,6 +3,7 @@ import Link from "next/link";
 import "./globals.css";
 import { Providers } from "@/components/providers";
 import { HeaderAuth } from "@/components/header-auth";
+import { AccessibilityWidget } from "@/components/accessibility-widget";
 
 export const metadata: Metadata = {
   title: "Projektor",
@@ -32,6 +33,7 @@ export default function RootLayout({
             </header>
             <main className="flex-1">{children}</main>
           </div>
+          <AccessibilityWidget />
         </Providers>
       </body>
     </html>
