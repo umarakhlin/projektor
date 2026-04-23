@@ -7,28 +7,20 @@ Keep this file short — deep context lives in `docs/`.
 
 ## 🔴 High priority — must finish soon
 
-### 1. DM email notifications (blocked — Resend sandbox)
-- Cron, endpoint, dedupe and schedule are all working end-to-end.
-- Current blocker: Resend's test mode only lets us email
-  `uma.rakhlin@gmail.com`. Our test accounts use other addresses, so
-  Resend returns 403.
-- **Recommended fix**: switch to Brevo (free, 300 emails/day, single
-  sender verification without owning a domain).
-  - Sign up at brevo.com
-  - Verify `uma.rakhlin@gmail.com` as a sender (one click in the app)
-  - Create an API key
-  - Replace `src/lib/email.ts` so it uses the Brevo API (~10 min)
-  - Add `BREVO_API_KEY` to Vercel env vars
-  - Remove / keep `RESEND_API_KEY` as fallback
-- Alternative long-term: buy a domain, verify it in Resend, set
-  `EMAIL_FROM=notifications@yourdomain.com`.
-
-### 2. Intellectual-property protection (see `docs/ip-protection.md`)
+### 1. Intellectual-property protection (see `docs/ip-protection.md`)
 - Right now all project pitches are publicly visible, which is risky.
 - Decision pending: pick one of the proposed visibility models.
 
-### 3. Monetization plan (see `docs/monetization.md`)
+### 2. Monetization plan (see `docs/monetization.md`)
 - No revenue model yet. Pick a direction before launch.
+
+### 3. Email deliverability on a real domain (not urgent, eventually)
+- DM notifications work via Brevo with a gmail.com sender.
+- Because gmail.com can't be DMARC-authenticated by us, some mail
+  providers may route our emails to spam.
+- When launching publicly: buy a domain, verify it in Brevo (or
+  switch to Resend), set `EMAIL_FROM=notifications@yourdomain.com`.
+- No code change required at that point.
 
 ---
 
@@ -55,6 +47,9 @@ Keep this file short — deep context lives in `docs/`.
 
 ## ✅ Recently done
 
+- DM email notifications end-to-end: Brevo API integration, Gmail
+  sender verified, `BREVO_API_KEY` + `EMAIL_FROM` in Vercel,
+  verified emails actually arriving to recipients.
 - Accessibility widget (text size, dyslexia font, bionic reading,
   high contrast, reduce motion, underline links, readable spacing).
 - WhatsApp-style chat: dedicated `/messages/[userId]` page with
