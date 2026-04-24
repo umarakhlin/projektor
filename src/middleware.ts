@@ -12,7 +12,6 @@ export const config = {
     "/saved",
     "/inbox/:path*",
     "/team-space",
-    "/talent",
     "/messages/:path*",
     "/profile/:path*",
     "/admin/:path*",

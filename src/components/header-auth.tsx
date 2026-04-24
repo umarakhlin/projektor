@@ -184,9 +184,6 @@ export function HeaderAuth() {
               </span>
             )}
           </Link>
-          <Link href="/talent" className={navLinkClass(pathname === "/talent")}>
-            Talent
-          </Link>
           <Link
             href="/my-projects"
             className={navLinkClass(pathname === "/my-projects")}
