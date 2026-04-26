@@ -27,9 +27,6 @@ Keep this file short — deep context lives in `docs/`.
 ## 🟡 Medium priority — nice to have soon
 
 - **"My invites" page** — one place to see/accept/decline invites received.
-- **Real-time unread badge in chat** (right now polling every 10 s).
-- **Onboarding flow for new users** — guided setup for skills, photo,
-  availability so match score has data to work with from day one.
 
 ---
 
@@ -46,6 +43,13 @@ Keep this file short — deep context lives in `docs/`.
 
 ## ✅ Recently done
 
+- Real-time unread badge: BroadcastChannel between Messages page and
+  header, faster polling (5s) when tab visible, instant refresh on
+  open/send.
+- Onboarding wizard at `/welcome`: 3 steps (name+photo, skills,
+  availability), each saves immediately, can be skipped. Dismissable
+  reminder banner on home feed. Email verification now routes through
+  `/welcome`.
 - Merged Talent into Explore as a tabbed page (`Projects` | `People`),
   driven by `?tab=`. `/talent` redirects for back-compat. Single
   Explore entry point in the nav.
