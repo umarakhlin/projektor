@@ -80,15 +80,23 @@ html.a11y-readable-spacing li {
   line-height: 1.9 !important;
 }
 
-.a11y-bionic-group {
-  unicode-bidi: plaintext;
+/*
+ * Bionic reading: CSS-only emphasis in main content.
+ * We do NOT mutate the DOM (that breaks React reconciliation).
+ */
+html.a11y-bionic main p,
+html.a11y-bionic main li,
+html.a11y-bionic main td,
+html.a11y-bionic main th,
+html.a11y-bionic main label,
+html.a11y-bionic main blockquote {
+  font-weight: 500;
+  font-synthesis: weight;
 }
 
-.a11y-bionic-head {
-  font-weight: 700;
-}
-
-/* Slightly stronger emphasis when dyslexia mode is also on */
-html.a11y-dyslexia .a11y-bionic-head {
-  font-weight: 800;
+html.a11y-bionic main h1,
+html.a11y-bionic main h2,
+html.a11y-bionic main h3 {
+  font-weight: 600;
+  letter-spacing: -0.01em;
 }

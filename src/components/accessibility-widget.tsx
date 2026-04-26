@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 type FontScale = "normal" | "large" | "xlarge";
 
@@ -56,83 +56,15 @@ function saveSettings(s: Settings) {
   if (typeof window === "undefined") return;
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(s));
-  } catch {}
-}
-
-const SKIP_TAGS = new Set([
-  "SCRIPT",
-  "STYLE",
-  "NOSCRIPT",
-  "CODE",
-  "PRE",
-  "TEXTAREA",
-  "INPUT",
-  "SELECT",
-  "BUTTON",
-  "LABEL",
-  "OPTION",
-  "SVG",
-  "PATH"
-]);
-
-function bionifyWord(word: string): string {
-  if (word.length <= 1) return word;
-  const boldCount = Math.max(1, Math.ceil(word.length * 0.4));
-  const head = word.slice(0, boldCount);
-  const tail = word.slice(boldCount);
-  return `<b class="a11y-bionic-head">${head}</b>${tail}`;
-}
-
-function bionifyText(text: string): string {
-  return text.replace(/(\S+)/g, (match) => bionifyWord(match));
-}
-
-function walkAndBionify(node: Node, transformed: WeakSet<Node>) {
-  if (node.nodeType === Node.TEXT_NODE) {
-    const text = node.textContent ?? "";
-    if (!text.trim()) return;
-    const parent = node.parentElement;
-    if (!parent) return;
-    if (SKIP_TAGS.has(parent.tagName)) return;
-    if (parent.closest("[data-a11y-skip]")) return;
-    if (transformed.has(node)) return;
-
-    const span = document.createElement("span");
-    span.className = "a11y-bionic-group";
-    span.setAttribute("data-a11y-original", text);
-    span.innerHTML = bionifyText(text);
-    parent.replaceChild(span, node);
-    transformed.add(span);
-    return;
+  } catch {
+    /* ignore */
   }
-
-  if (node.nodeType !== Node.ELEMENT_NODE) return;
-  const el = node as Element;
-  if (SKIP_TAGS.has(el.tagName)) return;
-  if (el.hasAttribute("data-a11y-skip")) return;
-  if (el.classList.contains("a11y-bionic-group")) return;
-
-  const children = Array.from(el.childNodes);
-  for (const child of children) {
-    walkAndBionify(child, transformed);
-  }
-}
-
-function removeBionicFormatting() {
-  const groups = document.querySelectorAll(".a11y-bionic-group");
-  groups.forEach((group) => {
-    const original = group.getAttribute("data-a11y-original") ?? "";
-    const textNode = document.createTextNode(original);
-    group.parentNode?.replaceChild(textNode, group);
-  });
 }
 
 export function AccessibilityWidget() {
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [settings, setSettings] = useState<Settings>(DEFAULTS);
-  const bionicObserverRef = useRef<MutationObserver | null>(null);
-  const transformedRef = useRef<WeakSet<Node>>(new WeakSet());
 
   useEffect(() => {
     setMounted(true);
@@ -147,39 +79,12 @@ export function AccessibilityWidget() {
     saveSettings(settings);
   }, [settings, mounted]);
 
-  useEffect(() => {
-    if (!mounted) return;
-
-    if (!settings.bionicReading) {
-      bionicObserverRef.current?.disconnect();
-      bionicObserverRef.current = null;
-      removeBionicFormatting();
-      transformedRef.current = new WeakSet();
-      return;
-    }
-
-    const run = () => {
-      walkAndBionify(document.body, transformedRef.current);
-    };
-    run();
-
-    const observer = new MutationObserver((muts) => {
-      for (const m of muts) {
-        m.addedNodes.forEach((n) => walkAndBionify(n, transformedRef.current));
-      }
-    });
-    observer.observe(document.body, { childList: true, subtree: true });
-    bionicObserverRef.current = observer;
-
-    return () => {
-      observer.disconnect();
-      bionicObserverRef.current = null;
-    };
-  }, [settings.bionicReading, mounted]);
-
-  const update = useCallback(<K extends keyof Settings>(key: K, value: Settings[K]) => {
-    setSettings((prev) => ({ ...prev, [key]: value }));
-  }, []);
+  const update = useCallback(
+    <K extends keyof Settings>(key: K, value: Settings[K]) => {
+      setSettings((prev) => ({ ...prev, [key]: value }));
+    },
+    []
+  );
 
   const resetAll = useCallback(() => {
     setSettings(DEFAULTS);
@@ -265,7 +170,7 @@ export function AccessibilityWidget() {
               />
               <ToggleRow
                 label="Bionic reading"
-                description="Bolds the start of each word to guide the eye."
+                description="Slightly heavier text in the main area to help scanning (CSS only—safe for React)."
                 checked={settings.bionicReading}
                 onChange={(v) => update("bionicReading", v)}
               />
