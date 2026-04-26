@@ -72,6 +72,11 @@ enum ReportStatus {
   Resolved
 }
 
+enum ProjectVisibility {
+  Public
+  NDAGated
+}
+
 // ============ MODELS ============
 
 model User {
@@ -85,6 +90,7 @@ model User {
   links        String?   // JSON array of {url, label}
   availability String?
   settings     String?   // JSON: { showEmail?: boolean }
+  lastNdaAcceptedAt DateTime? @map("last_nda_accepted_at")
   createdAt    DateTime  @default(now()) @map("created_at")
   updatedAt    DateTime  @updatedAt @map("updated_at")
 
@@ -100,6 +106,7 @@ model User {
   emailVerificationTokens EmailVerificationToken[]
   directMessagesSent     DirectMessage[] @relation("DMSender")
   directMessagesReceived DirectMessage[] @relation("DMRecipient")
+  ndaAcceptances        NdaAcceptance[]
 
   @@map("users")
 }
@@ -114,6 +121,7 @@ model Project {
   stage          ProjectStage   @default(Idea)
   category       ProjectCategory @default(Other)
   status         ProjectStatus  @default(Draft)
+  visibility     ProjectVisibility @default(NDAGated)
   hoursPerWeek   Int?           @map("hours_per_week")
   durationMonths Int?          @map("duration_months")
   rewardModels   String?        @map("reward_models") // JSON: array of {type, ...fields}
@@ -282,6 +290,21 @@ model DirectMessage {
   @@index([senderId])
   @@index([emailNotifiedAt, readAt])
   @@map("direct_messages")
+}
+
+model NdaAcceptance {
+  id         String   @id @default(cuid())
+  userId     String   @map("user_id")
+  ndaVersion String   @map("nda_version")
+  agreedAt   DateTime @default(now()) @map("agreed_at")
+  ipHash     String?  @map("ip_hash")
+  userAgent  String?  @map("user_agent")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([agreedAt])
+  @@map("nda_acceptances")
 }
 
 model EmailVerificationToken {

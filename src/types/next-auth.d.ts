@@ -14,6 +14,7 @@ declare module "next-auth" {
       emailVerified?: boolean;
       emailVerificationReminderPending?: boolean;
     };
+    sessionStartedAt?: number;
   }
 }
 
@@ -22,5 +23,6 @@ declare module "next-auth/jwt" {
     id: string;
     emailVerified?: boolean;
     emailVerificationReminderPending?: boolean;
+    sessionStartedAt?: number;
   }
 }

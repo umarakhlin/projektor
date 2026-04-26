@@ -84,57 +84,82 @@ Every project has three layers of information:
 
 ## Implementation phases
 
-**Phase 1 (before public launch)**
-- Add `visibility` field per project: `Public` / `NDAGated` / `InviteOnly`
-- Split project content into `publicSummary` + `protectedPitch`
-- NDA click-through with logging table (`IdeaAccess`)
-- Server-side signed snapshots of project content on each update
+**Phase 1 — DONE (April 2026)**
+Per Uma's request, the NDA is platform-wide and re-affirmed on every
+sign-in (not per-project click-through). What ships:
+- `Project.visibility` enum: `Public` / `NDAGated`. Existing rows
+  defaulted to `NDAGated` via migration.
+- Owner picks visibility in the create flow (defaults to `NDAGated`).
+- `User.lastNdaAcceptedAt` and `NdaAcceptance` audit table.
+- `/api/me/accept-nda` records each click-through with NDA version,
+  IP hash, user agent.
+- JWT carries `sessionStartedAt`. Server-side check in `lib/nda.ts`:
+  if `lastNdaAcceptedAt` is older than `sessionStartedAt`, the NDA is
+  required.
+- Client-side `<NdaGate />` (mounted in the root layout) fetches
+  `/api/me/nda-status` and redirects authenticated users to `/nda`
+  whenever their session has not yet acknowledged the NDA.
+- Project detail page shows a small "Confidential — viewing under
+  NDA" banner for non-owners on `NDAGated` projects.
+- NDA wording version is in `lib/nda.ts` (`NDA_VERSION`); bumping it
+  forces every user to re-accept on next sign-in.
 
-**Phase 2 (post-launch, if needed)**
-- Watermarked previews
-- Copy-protect UI on sensitive fields
-- Report-and-investigate flow
+**Phase 2 (next, if needed)**
+- Split project content into `publicSummary` + `protectedPitch` so
+  signed-out visitors can only see the public summary.
+- Per-project access log (which signed-in user opened which project,
+  when, what NDA version).
+- Server-side signed snapshots of project content on each update for
+  prior-art proofs.
+- Watermarked previews, copy-protect UI, report-and-investigate flow.
 
 **Phase 3 (later)**
 - Collaborator agreement templates (Uma & a lawyer draft a Hebrew +
   English SAFE-style collaborator agreement users can send to new
-  teammates with one click)
+  teammates with one click).
 
-## Schema sketch
+## Current schema (Phase 1 shipped)
 
 ```prisma
 enum ProjectVisibility {
   Public
   NDAGated
-  InviteOnly
 }
 
 model Project {
   // existing fields...
-  visibility       ProjectVisibility @default(NDAGated)
-  publicSummary    String?  // always visible
-  protectedPitch   String?  // problem, solution, approach (NDA+)
-  membersOnlyNotes String?  // shown only after acceptance
+  visibility ProjectVisibility @default(NDAGated)
 }
 
-model IdeaAccess {
-  id          String   @id @default(cuid())
-  projectId   String
-  viewerId    String
-  snapshotHash String   // sha256 of the version viewed
-  ndaVersion  String
-  agreedAt    DateTime @default(now())
+model User {
+  // existing fields...
+  lastNdaAcceptedAt DateTime?
+  ndaAcceptances    NdaAcceptance[]
+}
 
-  @@index([projectId])
-  @@index([viewerId])
+model NdaAcceptance {
+  id         String   @id @default(cuid())
+  userId     String
+  ndaVersion String
+  agreedAt   DateTime @default(now())
+  ipHash     String?
+  userAgent  String?
 }
 ```
 
-## Open questions for Uma
-- Default visibility for new projects: `Public` (more discoverability,
-  less protection) or `NDAGated` (more protection, more friction)?
-  Recommendation: **NDAGated**, with a "Make public" switch for
-  owners who explicitly want wide attention.
-- Do we also want invite-only projects from day one, or add that later?
-- Should the NDA be one platform-wide text, or customizable per
-  project? Recommendation: one well-drafted platform NDA for now.
+## Decisions logged
+- **Default visibility**: `NDAGated` for every new project; owners can
+  switch to `Public` in the create flow.
+- **NDA cadence**: re-affirmed on every sign-in. UX is a redirect to
+  `/nda` after the user authenticates and before they can browse.
+- **NDA scope**: one platform-wide text (`NDA_VERSION` in
+  `lib/nda.ts`). Per-project NDAs can be added in Phase 2.
+- **`InviteOnly` visibility**: not in Phase 1; revisit if we see
+  real demand.
+
+## Open questions for Phase 2
+- Do we need to split content into a public summary + protected
+  pitch for signed-out visitors? Today, the NDA gate only fires once
+  the user is signed in.
+- Per-project access log: do owners want to see "who viewed my
+  project"? If yes, we add an `IdeaAccess` table at that point.

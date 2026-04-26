@@ -1,4 +1,8 @@
-import type { ProjectStage, ProjectCategory } from "@prisma/client";
+import type {
+  ProjectStage,
+  ProjectCategory,
+  ProjectVisibility
+} from "@prisma/client";
 import { parseJsonArray } from "./safe-json";
 
 export type RewardModel = 
@@ -24,6 +28,7 @@ export type ProjectInput = {
   solution?: string;
   stage: ProjectStage;
   category: ProjectCategory;
+  visibility?: ProjectVisibility;
   hoursPerWeek?: number;
   durationMonths?: number;
   rewardModels?: RewardModel[];

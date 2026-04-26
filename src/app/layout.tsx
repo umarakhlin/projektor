@@ -4,6 +4,7 @@ import "./globals.css";
 import { Providers } from "@/components/providers";
 import { HeaderAuth } from "@/components/header-auth";
 import { AccessibilityWidget } from "@/components/accessibility-widget";
+import { NdaGate } from "@/components/nda-gate";
 
 export const metadata: Metadata = {
   title: "Projektor",
@@ -19,6 +20,7 @@ export default function RootLayout({
     <html lang="en">
       <body className="min-h-screen bg-slate-950 text-slate-50">
         <Providers>
+          <NdaGate />
           <div className="mx-auto flex min-h-screen max-w-6xl flex-col px-4 py-6">
             <header className="mb-6 flex items-center justify-between">
               <Link href="/" className="flex items-center gap-2 shrink-0">

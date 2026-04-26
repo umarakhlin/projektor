@@ -50,6 +50,7 @@ export async function POST(req: Request) {
     solution,
     stage,
     category,
+    visibility,
     hoursPerWeek,
     durationMonths,
     rewardModels,
@@ -72,6 +73,7 @@ export async function POST(req: Request) {
       solution: solution?.trim() || null,
       stage: stage ?? "Idea",
       category: category ?? "Other",
+      visibility: visibility ?? "NDAGated",
       hoursPerWeek: hoursPerWeek ?? null,
       durationMonths: durationMonths ?? null,
       rewardModels: rewardModels?.length

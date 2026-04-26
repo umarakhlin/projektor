@@ -72,6 +72,7 @@ export const authOptions: NextAuthOptions = {
     },
     async jwt({ token, user }) {
       if (user) {
+        token.sessionStartedAt = Date.now();
         if (user.email) {
           const dbUser = await prisma.user.findUnique({
             where: { email: user.email.toLowerCase() },
@@ -105,6 +106,9 @@ export const authOptions: NextAuthOptions = {
         session.user.emailVerificationReminderPending = Boolean(
           token.emailVerificationReminderPending
         );
+      }
+      if (typeof token.sessionStartedAt === "number") {
+        session.sessionStartedAt = token.sessionStartedAt;
       }
       return session;
     }

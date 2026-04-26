@@ -38,6 +38,7 @@ const REWARD_TYPES = [
 
 type ProjectStage = (typeof STAGES)[number]["value"];
 type ProjectCategory = (typeof CATEGORIES)[number]["value"];
+type ProjectVisibility = "Public" | "NDAGated";
 const CREATE_DRAFT_KEY = "projektor.create.draft.v1";
 
 const STEP_GUIDE = [
@@ -68,6 +69,7 @@ type ApiDraftProject = {
   solution: string | null;
   stage: string;
   category: string;
+  visibility?: string | null;
   hoursPerWeek: number | null;
   durationMonths: number | null;
   rewardModels: string | null;
@@ -138,6 +140,7 @@ function CreateProjectPageInner() {
   const [solution, setSolution] = useState("");
   const [stage, setStage] = useState<ProjectStage>("Idea");
   const [category, setCategory] = useState<ProjectCategory>("Other");
+  const [visibility, setVisibility] = useState<ProjectVisibility>("NDAGated");
 
   const [hoursPerWeek, setHoursPerWeek] = useState<number | "">("");
   const [durationMonths, setDurationMonths] = useState<number | "">("");
@@ -197,6 +200,9 @@ function CreateProjectPageInner() {
           }
           if (p.category && CATEGORIES.some((c) => c.value === p.category)) {
             setCategory(p.category as ProjectCategory);
+          }
+          if (p.visibility === "Public" || p.visibility === "NDAGated") {
+            setVisibility(p.visibility);
           }
           if (typeof p.hoursPerWeek === "number") {
             setHoursPerWeek(p.hoursPerWeek);
@@ -258,6 +264,7 @@ function CreateProjectPageInner() {
         solution: string;
         stage: ProjectStage;
         category: ProjectCategory;
+        visibility: ProjectVisibility;
         hoursPerWeek: number | "";
         durationMonths: number | "";
         rewardModels: RewardModel[];
@@ -271,6 +278,7 @@ function CreateProjectPageInner() {
       if (typeof d.solution === "string") setSolution(d.solution);
       if (d.stage && STAGES.some((s) => s.value === d.stage)) setStage(d.stage);
       if (d.category && CATEGORIES.some((c) => c.value === d.category)) setCategory(d.category);
+      if (d.visibility === "Public" || d.visibility === "NDAGated") setVisibility(d.visibility);
       if (typeof d.hoursPerWeek === "number" || d.hoursPerWeek === "") setHoursPerWeek(d.hoursPerWeek);
       if (typeof d.durationMonths === "number" || d.durationMonths === "") setDurationMonths(d.durationMonths);
       if (Array.isArray(d.rewardModels)) setRewardModels(d.rewardModels);
@@ -293,6 +301,7 @@ function CreateProjectPageInner() {
       solution,
       stage,
       category,
+      visibility,
       hoursPerWeek,
       durationMonths,
       rewardModels,
@@ -310,6 +319,7 @@ function CreateProjectPageInner() {
     solution,
     stage,
     category,
+    visibility,
     hoursPerWeek,
     durationMonths,
     rewardModels,
@@ -411,6 +421,7 @@ function CreateProjectPageInner() {
             solution: solution?.trim() || null,
             stage,
             category,
+            visibility,
             rewardModels: [],
             roles: []
           })
@@ -431,6 +442,7 @@ function CreateProjectPageInner() {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
+            visibility,
             hoursPerWeek: hoursPerWeek || undefined,
             durationMonths: durationMonths || undefined,
             rewardModels: rewardModels.length ? rewardModels : undefined
@@ -638,6 +650,52 @@ function CreateProjectPageInner() {
               ))}
             </select>
           </label>
+          <fieldset className="flex flex-col gap-2 rounded-lg border border-slate-700 bg-slate-900/40 p-4">
+            <legend className="px-1 text-sm font-medium text-slate-300">
+              Who can see this project?
+            </legend>
+            <p className="text-xs text-slate-500">
+              All Projektor members already accept a confidentiality
+              acknowledgement at every sign-in. Choose <em>NDA-gated</em> to
+              add an extra reminder banner on the project page (recommended).
+            </p>
+            <label className="flex items-start gap-2 rounded-md border border-slate-700/60 bg-slate-900/50 p-3 text-sm">
+              <input
+                type="radio"
+                name="visibility"
+                value="NDAGated"
+                checked={visibility === "NDAGated"}
+                onChange={() => setVisibility("NDAGated")}
+                className="mt-1"
+              />
+              <div>
+                <span className="font-medium text-slate-200">
+                  NDA-gated (recommended)
+                </span>
+                <p className="text-xs text-slate-500">
+                  Visitors see a small confidential reminder when they open
+                  the project page.
+                </p>
+              </div>
+            </label>
+            <label className="flex items-start gap-2 rounded-md border border-slate-700/60 bg-slate-900/50 p-3 text-sm">
+              <input
+                type="radio"
+                name="visibility"
+                value="Public"
+                checked={visibility === "Public"}
+                onChange={() => setVisibility("Public")}
+                className="mt-1"
+              />
+              <div>
+                <span className="font-medium text-slate-200">Public</span>
+                <p className="text-xs text-slate-500">
+                  No extra reminder. Use this for projects you're happy to
+                  share openly with the community.
+                </p>
+              </div>
+            </label>
+          </fieldset>
           {aiAvailable && (pitch || problem || solution) && (
             <button
               type="button"

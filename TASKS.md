@@ -7,9 +7,17 @@ Keep this file short — deep context lives in `docs/`.
 
 ## 🔴 High priority — must finish soon
 
-### 1. Intellectual-property protection (see `docs/ip-protection.md`)
-- Right now all project pitches are publicly visible, which is risky.
-- Decision pending: pick one of the proposed visibility models.
+### 1. Intellectual-property protection — Phase 2 (see `docs/ip-protection.md`)
+- Phase 1 is live: every sign-in shows a confidentiality acknowledgement
+  before the user can browse, every project defaults to NDA-gated, and
+  the project page shows a small "Confidential" reminder for
+  non-owners.
+- Phase 2 ideas to discuss:
+  - Public summary vs. protected pitch (split fields).
+  - Per-project NDA records (not just platform-wide), so owners can see
+    who acknowledged what.
+  - Watermark / "viewed by" log on each project page.
+  - Owner-side controls for revoking access.
 
 ### 2. Monetization plan (see `docs/monetization.md`)
 - No revenue model yet. Pick a direction before launch.
@@ -43,6 +51,13 @@ Keep this file short — deep context lives in `docs/`.
 
 ## ✅ Recently done
 
+- IP protection Phase 1: per-sign-in NDA gate. Every session redirects
+  to `/nda` until the user accepts. Acceptances are logged
+  (`nda_acceptances` table) with version, timestamp, IP hash, UA. New
+  `Project.visibility` enum (`Public` / `NDAGated`, default
+  `NDAGated`). Project detail page shows a small confidential reminder
+  banner for non-owners on NDA-gated projects. Visibility selector in
+  the create flow.
 - Real-time unread badge: BroadcastChannel between Messages page and
   header, faster polling (5s) when tab visible, instant refresh on
   open/send.

@@ -71,6 +71,7 @@ export async function PATCH(
     solution,
     stage,
     category,
+    visibility,
     hoursPerWeek,
     durationMonths,
     rewardModels,
@@ -84,6 +85,9 @@ export async function PATCH(
   if (solution !== undefined) update.solution = solution?.trim() ?? null;
   if (stage !== undefined) update.stage = stage ?? project.stage;
   if (category !== undefined) update.category = category ?? project.category;
+  if (visibility !== undefined) {
+    update.visibility = visibility ?? project.visibility;
+  }
   if (hoursPerWeek !== undefined) update.hoursPerWeek = hoursPerWeek ?? null;
   if (durationMonths !== undefined) update.durationMonths = durationMonths ?? null;
   if (rewardModels !== undefined) {

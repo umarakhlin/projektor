@@ -57,8 +57,22 @@ export default async function ProjectDetailPage({
     session &&
     !(isOwner && project.status === "Draft");
 
+  const isProtectedView =
+    project.visibility === "NDAGated" && !isOwner;
+
   return (
     <div className="mx-auto max-w-2xl">
+      {isProtectedView && (
+        <div className="mb-4 flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+          <span aria-hidden>🔒</span>
+          <span>
+            <strong className="font-semibold">Confidential.</strong> You are
+            viewing this project under the Projektor NDA you accepted at sign
+            in. Do not copy, share, or screenshot this content outside the
+            platform.
+          </span>
+        </div>
+      )}
       <div className="mb-6">
         <div className="mb-2 flex flex-wrap items-center gap-2">
           <span
