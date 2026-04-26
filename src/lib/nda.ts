@@ -13,6 +13,17 @@ export type NdaStatus = {
   lastAcceptedAt: string | null;
 };
 
+async function readLastNdaAcceptedAt(userId: string): Promise<Date | null> {
+  // We use $queryRaw so this works even if a freshly deployed Prisma
+  // client hasn't picked up the lastNdaAcceptedAt column yet.
+  const rows = await prisma.$queryRaw<
+    { last_nda_accepted_at: Date | null }[]
+  >`SELECT "last_nda_accepted_at" FROM "users" WHERE "id" = ${userId} LIMIT 1`;
+  const row = rows[0];
+  if (!row) return null;
+  return row.last_nda_accepted_at ?? null;
+}
+
 export async function getNdaStatusForCurrentUser(): Promise<NdaStatus | null> {
   try {
     const session = await getServerSession(authOptions);
@@ -20,15 +31,13 @@ export async function getNdaStatusForCurrentUser(): Promise<NdaStatus | null> {
 
     let lastNdaAcceptedAt: Date | null = null;
     try {
-      const user = await prisma.user.findUnique({
-        where: { id: session.user.id },
-        select: { lastNdaAcceptedAt: true }
-      });
-      lastNdaAcceptedAt = user?.lastNdaAcceptedAt ?? null;
+      lastNdaAcceptedAt = await readLastNdaAcceptedAt(session.user.id);
     } catch (err) {
-      // Column may not exist yet on this environment. Fail open so the
-      // app keeps working; the gate will simply not redirect.
-      console.error("[nda] lastNdaAcceptedAt lookup failed:", err);
+      console.error(
+        "[nda] readLastNdaAcceptedAt failed",
+        err instanceof Error ? err.message : err
+      );
+      // Fail open: don't lock the site if the column lookup fails.
       return {
         required: false,
         ndaVersion: NDA_VERSION,
@@ -47,6 +56,10 @@ export async function getNdaStatusForCurrentUser(): Promise<NdaStatus | null> {
       lastAcceptedAtMs == null ||
       lastAcceptedAtMs < sessionStartedAt;
 
+    console.log(
+      `[nda] status user=${session.user.id} sessionStartedAt=${sessionStartedAt} lastAccepted=${lastAcceptedAtMs} required=${required}`
+    );
+
     return {
       required,
       ndaVersion: NDA_VERSION,
@@ -56,7 +69,10 @@ export async function getNdaStatusForCurrentUser(): Promise<NdaStatus | null> {
         : null
     };
   } catch (err) {
-    console.error("[nda] getNdaStatusForCurrentUser failed:", err);
+    console.error(
+      "[nda] getNdaStatusForCurrentUser failed",
+      err instanceof Error ? err.message : err
+    );
     return null;
   }
 }

@@ -1,4 +1,4 @@
-import { createHash } from "crypto";
+import { createHash, randomUUID } from "crypto";
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 import { authOptions } from "@/lib/auth";
@@ -47,25 +47,35 @@ export async function POST(req: Request) {
 
   const ipHash = hashIp(pickIp(req));
   const now = new Date();
+  const acceptanceId = randomUUID();
 
   try {
+    // Use raw SQL so this works regardless of whether the deployed
+    // Prisma client has picked up the new fields/tables yet.
     await prisma.$transaction([
-      prisma.ndaAcceptance.create({
-        data: {
-          userId: session.user.id,
-          ndaVersion: NDA_VERSION,
-          agreedAt: now,
-          ipHash,
-          userAgent
-        }
-      }),
-      prisma.user.update({
-        where: { id: session.user.id },
-        data: { lastNdaAcceptedAt: now }
-      })
+      prisma.$executeRaw`
+        INSERT INTO "nda_acceptances"
+          ("id", "user_id", "nda_version", "agreed_at", "ip_hash", "user_agent")
+        VALUES (
+          ${acceptanceId},
+          ${session.user.id},
+          ${NDA_VERSION},
+          ${now},
+          ${ipHash},
+          ${userAgent}
+        )
+      `,
+      prisma.$executeRaw`
+        UPDATE "users"
+        SET "last_nda_accepted_at" = ${now}
+        WHERE "id" = ${session.user.id}
+      `
     ]);
   } catch (err) {
-    console.error("[nda] accept-nda transaction failed:", err);
+    console.error(
+      "[nda] accept-nda transaction failed",
+      err instanceof Error ? err.message : err
+    );
     return NextResponse.json(
       { error: "Could not record acceptance." },
       { status: 500 }
