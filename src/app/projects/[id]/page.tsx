@@ -7,6 +7,7 @@ import { parseJsonArray } from "@/lib/safe-json";
 import { ProjectStatusControls } from "@/components/project-status-controls";
 import { ReportButton } from "@/components/report-button";
 import { ProjectSaveHeartClient } from "@/components/project-save-heart-client";
+import { BionicText } from "@/components/bionic-text";
 
 export default async function ProjectDetailPage({
   params
@@ -102,7 +103,11 @@ export default async function ProjectDetailPage({
           ))}
         </div>
         <div className="flex flex-wrap items-start justify-between gap-3">
-          <h1 className="text-2xl font-semibold">{project.title}</h1>
+          <BionicText
+            as="h1"
+            className="text-2xl font-semibold"
+            text={project.title}
+          />
           {showSaveHeart && (
             <ProjectSaveHeartClient
               projectId={project.id}
@@ -181,7 +186,11 @@ export default async function ProjectDetailPage({
       {project.pitch && (
         <section className="mb-6">
           <h2 className="mb-2 text-sm font-medium text-slate-400">Pitch</h2>
-          <p className="text-slate-200">{project.pitch}</p>
+          <BionicText
+            as="p"
+            className="text-slate-200"
+            text={project.pitch}
+          />
         </section>
       )}
 
@@ -190,13 +199,21 @@ export default async function ProjectDetailPage({
           {project.problem && (
             <div className="mb-2">
               <h2 className="mb-1 text-sm font-medium text-slate-400">Problem</h2>
-              <p className="text-slate-200">{project.problem}</p>
+              <BionicText
+                as="p"
+                className="text-slate-200"
+                text={project.problem}
+              />
             </div>
           )}
           {project.solution && (
             <div>
               <h2 className="mb-1 text-sm font-medium text-slate-400">Solution</h2>
-              <p className="text-slate-200">{project.solution}</p>
+              <BionicText
+                as="p"
+                className="text-slate-200"
+                text={project.solution}
+              />
             </div>
           )}
         </section>

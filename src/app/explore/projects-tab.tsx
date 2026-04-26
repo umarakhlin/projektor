@@ -6,6 +6,7 @@ import { useSession } from "next-auth/react";
 import { parseJsonArray } from "@/lib/safe-json";
 import { FEED_ROLE_TITLE_OPTIONS } from "@/lib/feed-role-titles";
 import { SaveProjectHeart } from "@/components/save-project-heart";
+import { BionicText } from "@/components/bionic-text";
 
 type Project = {
   id: string;
@@ -265,11 +266,17 @@ export function ProjectsTab() {
                       </span>
                     ))}
                   </div>
-                  <h2 className="font-semibold">{project.title}</h2>
+                  <BionicText
+                    as="h2"
+                    className="font-semibold"
+                    text={project.title}
+                  />
                   {project.pitch && (
-                    <p className="mt-1 line-clamp-2 text-sm text-slate-400">
-                      {project.pitch}
-                    </p>
+                    <BionicText
+                      as="p"
+                      className="mt-1 line-clamp-2 text-sm text-slate-400"
+                      text={project.pitch}
+                    />
                   )}
                   <p className="mt-2 text-xs text-slate-500">
                     {project.owner.name ?? "Unknown"} · {openRoles.length} open role(s)
