@@ -38,12 +38,20 @@ export function NdaGate() {
 
     let cancelled = false;
     fetch("/api/me/nda-status")
-      .then((r) => (r.ok ? r.json() : null))
+      .then(async (r) => {
+        if (!r.ok) {
+          console.warn("[NdaGate] /api/me/nda-status not ok", r.status);
+          return null;
+        }
+        return r.json();
+      })
       .then(
         (data: { required?: boolean } | null) => {
           if (cancelled) return;
+          console.log("[NdaGate] status response", data);
           if (data?.required) {
             const callbackUrl = pathname || "/";
+            console.log("[NdaGate] redirecting to /nda", { callbackUrl });
             router.replace(
               `/nda?callbackUrl=${encodeURIComponent(callbackUrl)}`
             );
@@ -52,7 +60,8 @@ export function NdaGate() {
           acceptedForSessionRef.current = sessionKey;
         }
       )
-      .catch(() => {
+      .catch((err) => {
+        console.warn("[NdaGate] fetch failed", err);
         /* swallow — don't lock people out on a transient error */
       });
 
