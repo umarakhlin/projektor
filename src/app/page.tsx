@@ -32,6 +32,7 @@ export default function HomePage() {
   const [savedIds, setSavedIds] = useState<Set<string>>(() => new Set());
   const [projects, setProjects] = useState<Project[]>([]);
   const [profileReady, setProfileReady] = useState<boolean>(true);
+  const [welcomeBannerDismissed, setWelcomeBannerDismissed] = useState(false);
   const [loading, setLoading] = useState(true);
   const [hasMore, setHasMore] = useState(false);
   const [offset, setOffset] = useState(0);
@@ -40,6 +41,20 @@ export default function HomePage() {
   const [errorState, setErrorState] = useState<"auth" | "server" | null>(null);
 
   const showWelcome = status === "unauthenticated";
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    setWelcomeBannerDismissed(
+      window.localStorage.getItem("projektor.welcomeBannerDismissed") === "1"
+    );
+  }, []);
+
+  function dismissWelcomeBanner() {
+    setWelcomeBannerDismissed(true);
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem("projektor.welcomeBannerDismissed", "1");
+    }
+  }
 
   async function loadFeed(offsetVal = 0, append = false) {
     const params = new URLSearchParams();
@@ -150,23 +165,31 @@ export default function HomePage() {
 
       {!showWelcome && (
         <>
-          {!profileReady && (
-            <div className="mb-6 rounded-lg border border-brand/30 bg-brand/10 p-4">
-              <h2 className="text-sm font-semibold text-brand">Quick start</h2>
-              <p className="mt-1 text-sm text-slate-300">
-                Complete your profile to get better matches.
-              </p>
-              <div className="mt-3 flex flex-wrap gap-3 text-sm">
-                <Link href="/profile" className="text-brand hover:underline">
-                  1) Add username
-                </Link>
-                <Link href="/profile" className="text-brand hover:underline">
-                  2) Add photo
-                </Link>
-                <Link href="/profile" className="text-brand hover:underline">
-                  3) Pick skills
+          {!profileReady && !welcomeBannerDismissed && (
+            <div className="mb-6 flex items-start gap-3 rounded-lg border border-brand/30 bg-brand/10 p-4">
+              <div className="flex-1">
+                <h2 className="text-sm font-semibold text-brand">
+                  Finish setting up your profile
+                </h2>
+                <p className="mt-1 text-sm text-slate-300">
+                  Takes about a minute. Add a name, photo, and skills so people
+                  can find and invite you.
+                </p>
+                <Link
+                  href="/welcome"
+                  className="mt-3 inline-flex rounded-lg bg-brand px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-light"
+                >
+                  Set up now
                 </Link>
               </div>
+              <button
+                type="button"
+                onClick={dismissWelcomeBanner}
+                aria-label="Dismiss"
+                className="text-slate-400 hover:text-slate-200"
+              >
+                ×
+              </button>
             </div>
           )}
           <div className="mb-6 flex flex-wrap gap-2">

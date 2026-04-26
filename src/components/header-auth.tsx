@@ -3,7 +3,8 @@
 import { useSession, signOut } from "next-auth/react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { subscribeMessagesBus } from "@/lib/messages-bus";
 
 const navLinkClass = (active: boolean) =>
   active
@@ -69,10 +70,13 @@ export function HeaderAuth() {
     return () => clearInterval(interval);
   }, [session?.user?.id]);
 
+  const loadInboxUnreadRef = useRef<() => void>(() => {});
+
   useEffect(() => {
     if (!session?.user?.id) {
       setInboxUnread(0);
       setMessagesUnread(0);
+      loadInboxUnreadRef.current = () => {};
       return;
     }
     const loadInboxUnread = () => {
@@ -98,9 +102,45 @@ export function HeaderAuth() {
           setMessagesUnread(0);
         });
     };
+    loadInboxUnreadRef.current = loadInboxUnread;
     loadInboxUnread();
-    const interval = setInterval(loadInboxUnread, 10000);
-    return () => clearInterval(interval);
+
+    let interval: ReturnType<typeof setInterval> | null = null;
+    const startInterval = () => {
+      if (interval) clearInterval(interval);
+      const visible =
+        typeof document === "undefined" || document.visibilityState === "visible";
+      interval = setInterval(loadInboxUnread, visible ? 5000 : 30000);
+    };
+    startInterval();
+
+    const onVisibilityChange = () => {
+      if (typeof document !== "undefined" && document.visibilityState === "visible") {
+        loadInboxUnread();
+      }
+      startInterval();
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
+
+    return () => {
+      if (interval) clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+      loadInboxUnreadRef.current = () => {};
+    };
+  }, [session?.user?.id]);
+
+  useEffect(() => {
+    if (!session?.user?.id) return;
+    const unsubscribe = subscribeMessagesBus((event) => {
+      if (
+        event.type === "messages-read" ||
+        event.type === "messages-changed" ||
+        event.type === "messages-sent"
+      ) {
+        loadInboxUnreadRef.current();
+      }
+    });
+    return unsubscribe;
   }, [session?.user?.id]);
 
   useEffect(() => {

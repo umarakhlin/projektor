@@ -23,7 +23,11 @@ export default async function VerifyEmailPage({ searchParams }: VerifyEmailPageP
       </p>
       <div className="mt-6 flex gap-3">
         <Link
-          href="/auth/signin"
+          href={
+            result.ok
+              ? "/auth/signin?callbackUrl=/welcome"
+              : "/auth/signin"
+          }
           className="rounded-lg bg-brand px-4 py-2 font-medium text-white hover:bg-brand-light"
         >
           Go to sign in

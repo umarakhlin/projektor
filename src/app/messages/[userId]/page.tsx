@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
+import { broadcastMessagesEvent } from "@/lib/messages-bus";
 
 type Message = {
   id: string;
@@ -33,6 +34,8 @@ export default function ChatPage() {
   const [busy, setBusy] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
+  const lastInboundCountRef = useRef(0);
+
   const load = useCallback(async () => {
     setError("");
     const res = await fetch(`/api/direct-messages/with/${partnerId}`);
@@ -50,8 +53,19 @@ export default function ChatPage() {
     }
     const data = await res.json();
     setPartner(data.partner ?? null);
-    setMessages(Array.isArray(data.messages) ? data.messages : []);
+    const nextMessages: Message[] = Array.isArray(data.messages)
+      ? data.messages
+      : [];
+    setMessages(nextMessages);
     setLoading(false);
+
+    broadcastMessagesEvent({ type: "messages-read", partnerId });
+
+    const inboundCount = nextMessages.filter((m) => m.direction === "in").length;
+    if (inboundCount > lastInboundCountRef.current) {
+      broadcastMessagesEvent({ type: "messages-changed" });
+    }
+    lastInboundCountRef.current = inboundCount;
   }, [partnerId, router]);
 
   useEffect(() => {
@@ -89,6 +103,7 @@ export default function ChatPage() {
       return;
     }
     setContent("");
+    broadcastMessagesEvent({ type: "messages-sent" });
     await load();
   }
 
