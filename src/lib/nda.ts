@@ -14,30 +14,49 @@ export type NdaStatus = {
 };
 
 export async function getNdaStatusForCurrentUser(): Promise<NdaStatus | null> {
-  const session = await getServerSession(authOptions);
-  if (!session?.user?.id) return null;
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) return null;
 
-  const user = await prisma.user.findUnique({
-    where: { id: session.user.id },
-    select: { lastNdaAcceptedAt: true }
-  });
+    let lastNdaAcceptedAt: Date | null = null;
+    try {
+      const user = await prisma.user.findUnique({
+        where: { id: session.user.id },
+        select: { lastNdaAcceptedAt: true }
+      });
+      lastNdaAcceptedAt = user?.lastNdaAcceptedAt ?? null;
+    } catch (err) {
+      // Column may not exist yet on this environment. Fail open so the
+      // app keeps working; the gate will simply not redirect.
+      console.error("[nda] lastNdaAcceptedAt lookup failed:", err);
+      return {
+        required: false,
+        ndaVersion: NDA_VERSION,
+        sessionStartedAt: session.sessionStartedAt ?? null,
+        lastAcceptedAt: null
+      };
+    }
 
-  const sessionStartedAt = session.sessionStartedAt ?? null;
-  const lastAcceptedAtMs = user?.lastNdaAcceptedAt
-    ? user.lastNdaAcceptedAt.getTime()
-    : null;
+    const sessionStartedAt = session.sessionStartedAt ?? null;
+    const lastAcceptedAtMs = lastNdaAcceptedAt
+      ? lastNdaAcceptedAt.getTime()
+      : null;
 
-  const required =
-    sessionStartedAt == null ||
-    lastAcceptedAtMs == null ||
-    lastAcceptedAtMs < sessionStartedAt;
+    const required =
+      sessionStartedAt == null ||
+      lastAcceptedAtMs == null ||
+      lastAcceptedAtMs < sessionStartedAt;
 
-  return {
-    required,
-    ndaVersion: NDA_VERSION,
-    sessionStartedAt,
-    lastAcceptedAt: user?.lastNdaAcceptedAt
-      ? user.lastNdaAcceptedAt.toISOString()
-      : null
-  };
+    return {
+      required,
+      ndaVersion: NDA_VERSION,
+      sessionStartedAt,
+      lastAcceptedAt: lastNdaAcceptedAt
+        ? lastNdaAcceptedAt.toISOString()
+        : null
+    };
+  } catch (err) {
+    console.error("[nda] getNdaStatusForCurrentUser failed:", err);
+    return null;
+  }
 }

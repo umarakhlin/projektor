@@ -48,21 +48,29 @@ export async function POST(req: Request) {
   const ipHash = hashIp(pickIp(req));
   const now = new Date();
 
-  await prisma.$transaction([
-    prisma.ndaAcceptance.create({
-      data: {
-        userId: session.user.id,
-        ndaVersion: NDA_VERSION,
-        agreedAt: now,
-        ipHash,
-        userAgent
-      }
-    }),
-    prisma.user.update({
-      where: { id: session.user.id },
-      data: { lastNdaAcceptedAt: now }
-    })
-  ]);
+  try {
+    await prisma.$transaction([
+      prisma.ndaAcceptance.create({
+        data: {
+          userId: session.user.id,
+          ndaVersion: NDA_VERSION,
+          agreedAt: now,
+          ipHash,
+          userAgent
+        }
+      }),
+      prisma.user.update({
+        where: { id: session.user.id },
+        data: { lastNdaAcceptedAt: now }
+      })
+    ]);
+  } catch (err) {
+    console.error("[nda] accept-nda transaction failed:", err);
+    return NextResponse.json(
+      { error: "Could not record acceptance." },
+      { status: 500 }
+    );
+  }
 
   return NextResponse.json({
     ok: true,
