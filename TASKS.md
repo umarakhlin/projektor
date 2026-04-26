@@ -26,9 +26,8 @@ Keep this file short — deep context lives in `docs/`.
 
 ## 🟡 Medium priority — nice to have soon
 
-- **Profile pictures on Talent cards** (currently initials only).
 - **"My invites" page** — one place to see/accept/decline invites received.
-- **Real-time unread badge in chat** (right now polling every 8 s).
+- **Real-time unread badge in chat** (right now polling every 10 s).
 - **Onboarding flow for new users** — guided setup for skills, photo,
   availability so match score has data to work with from day one.
 
@@ -47,6 +46,9 @@ Keep this file short — deep context lives in `docs/`.
 
 ## ✅ Recently done
 
+- Merged Talent into Explore as a tabbed page (`Projects` | `People`),
+  driven by `?tab=`. `/talent` redirects for back-compat. Single
+  Explore entry point in the nav.
 - DM email notifications end-to-end: Brevo API integration, Gmail
   sender verified, `BREVO_API_KEY` + `EMAIL_FROM` in Vercel,
   verified emails actually arriving to recipients.
