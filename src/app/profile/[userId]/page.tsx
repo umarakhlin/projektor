@@ -5,6 +5,7 @@ import { useSession } from "next-auth/react";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ReportButton } from "@/components/report-button";
+import { BionicText } from "@/components/bionic-text";
 
 type PublicProfile = {
   id: string;
@@ -67,9 +68,11 @@ export default function PublicProfilePage() {
               {(profile.name?.[0] || "U").toUpperCase()}
             </div>
           )}
-          <h1 className="text-2xl font-semibold">
-            {profile.name || "Profile"}
-          </h1>
+          <BionicText
+            as="h1"
+            className="text-2xl font-semibold"
+            text={profile.name || "Profile"}
+          />
         </div>
         {session?.user?.id && profile.id && session.user.id !== profile.id && (
           <ReportButton targetType="User" targetId={profile.id} />
@@ -87,16 +90,22 @@ export default function PublicProfilePage() {
         {profile.skills.length > 0 && (
           <div>
             <span className="text-sm text-slate-400">Skills</span>
-            <p className="text-slate-50">
-              {profile.skills.join(", ")}
-            </p>
+            <BionicText
+              as="p"
+              className="text-slate-50"
+              text={profile.skills.join(", ")}
+            />
           </div>
         )}
 
         {profile.availability && (
           <div>
             <span className="text-sm text-slate-400">Availability</span>
-            <p className="text-slate-50">{profile.availability}</p>
+            <BionicText
+              as="p"
+              className="text-slate-50"
+              text={profile.availability}
+            />
           </div>
         )}
 

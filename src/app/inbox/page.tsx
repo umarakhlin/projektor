@@ -4,6 +4,7 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { BionicText } from "@/components/bionic-text";
 
 type Offer = {
   id: string;
@@ -261,12 +262,16 @@ export default function InboxPage() {
                     key={offer.id}
                     className="rounded-lg border border-slate-700 bg-slate-900/50 p-4"
                   >
-                    <h3 className="font-medium">
-                      {offer.application.role.project.title} — {offer.application.role.title}
-                    </h3>
-                    <p className="text-sm text-slate-400">
-                      from {offer.application.role.project.owner.name ?? "Creator"}
-                    </p>
+                    <BionicText
+                      as="h3"
+                      className="font-medium"
+                      text={`${offer.application.role.project.title} — ${offer.application.role.title}`}
+                    />
+                    <BionicText
+                      as="p"
+                      className="text-sm text-slate-400"
+                      text={`from ${offer.application.role.project.owner.name ?? "Creator"}`}
+                    />
                     <div className="mt-4 flex gap-2">
                       <button
                         onClick={() => respond(offer.id, "accept")}
@@ -320,18 +325,22 @@ export default function InboxPage() {
                             <span className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-700 bg-slate-800 text-xs text-slate-300">
                               {(conv.partner.name?.[0] ?? "U").toUpperCase()}
                             </span>
-                            <p className="truncate font-medium text-slate-200">
-                              {conv.partner.name ?? "User"}
-                            </p>
+                            <BionicText
+                              as="p"
+                              className="truncate font-medium text-slate-200"
+                              text={conv.partner.name ?? "User"}
+                            />
                             {conv.unreadCount > 0 && (
                               <span className="ml-auto rounded-full bg-brand px-2 py-0.5 text-xs font-medium text-white">
                                 {conv.unreadCount}
                               </span>
                             )}
                           </div>
-                          <p className="mt-1 line-clamp-1 text-xs text-slate-400">
-                            {preview}
-                          </p>
+                          <BionicText
+                            as="p"
+                            className="mt-1 line-clamp-1 text-xs text-slate-400"
+                            text={preview}
+                          />
                         </div>
                         <p className="whitespace-nowrap text-[10px] text-slate-500">
                           {new Date(conv.lastAt).toLocaleDateString()}

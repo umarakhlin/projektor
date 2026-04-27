@@ -81,27 +81,43 @@ html.a11y-readable-spacing li {
 }
 
 /*
- * Bionic reading: default emphasis for plain paragraphs (no BionicText).
- * Word-level bionic is applied via BionicText in React — see
- * a11y-bionic-head / a11y-bionic-tail.
+ * Bionic reading.
+ *
+ * BionicText always renders <span class="a11y-bionic-head"> and
+ * <span class="a11y-bionic-tail"> spans regardless of the toggle. The
+ * emphasis is applied purely via CSS so it works identically in SSR,
+ * RSC, and CSR — no client React state involved.
+ *
+ * When the toggle is OFF, head/tail inherit the parent and look identical
+ * to plain text. When `html.a11y-bionic` is ON, head becomes heavy and
+ * tail becomes lighter, which produces the dyslexia-friendly word shape.
+ */
+.a11y-bionic-words,
+.a11y-bionic-word,
+.a11y-bionic-head,
+.a11y-bionic-tail {
+  font: inherit;
+  font-weight: inherit;
+  letter-spacing: inherit;
+}
+
+html.a11y-bionic .a11y-bionic-head {
+  font-weight: 800 !important;
+  font-synthesis: weight;
+}
+
+html.a11y-bionic .a11y-bionic-tail {
+  font-weight: 300 !important;
+  font-synthesis: weight;
+  opacity: 0.85;
+}
+
+/*
+ * Bonus: nudge weight on plain paragraphs/list items that aren't wrapped
+ * in BionicText so the toggle still has *some* visible effect there.
  */
 html.a11y-bionic main p:not(:has(.a11y-bionic-words)),
 html.a11y-bionic main li:not(:has(.a11y-bionic-words)) {
   font-weight: 500;
   font-synthesis: weight;
-}
-
-html.a11y-bionic .a11y-bionic-words .a11y-bionic-head {
-  font-weight: 700;
-}
-
-html.a11y-bionic .a11y-bionic-words .a11y-bionic-tail {
-  font-weight: 400;
-}
-
-/* Headings: when not using BionicText inner split, nudge weight */
-html.a11y-bionic main h1:not(:has(.a11y-bionic-words)),
-html.a11y-bionic main h2:not(:has(.a11y-bionic-words)),
-html.a11y-bionic main h3:not(:has(.a11y-bionic-words)) {
-  letter-spacing: -0.01em;
 }

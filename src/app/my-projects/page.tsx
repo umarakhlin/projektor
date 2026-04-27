@@ -4,6 +4,7 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { BionicText } from "@/components/bionic-text";
 
 type Project = {
   id: string;
@@ -155,7 +156,11 @@ export default function MyProjectsPage() {
                   className="block rounded-lg border border-slate-700 bg-slate-900/50 p-4 transition hover:border-slate-600"
                 >
                   <div className="flex items-center justify-between">
-                    <span className="font-medium">{p.title || "Untitled draft"}</span>
+                    <BionicText
+                      as="span"
+                      className="font-medium"
+                      text={p.title || "Untitled draft"}
+                    />
                     <span className="rounded px-2 py-0.5 text-xs bg-slate-700 text-slate-300">
                       Draft
                     </span>
@@ -197,7 +202,11 @@ export default function MyProjectsPage() {
                   className="block rounded-lg border border-slate-700 bg-slate-900/50 p-4 transition hover:border-slate-600"
                 >
                   <div className="flex items-center justify-between">
-                    <span className="font-medium">{p.title}</span>
+                    <BionicText
+                      as="span"
+                      className="font-medium"
+                      text={p.title}
+                    />
                     <span
                       className={`rounded px-2 py-0.5 text-xs ${
                         p.status === "Recruiting"
@@ -252,7 +261,11 @@ export default function MyProjectsPage() {
                   href={`/projects/${m.project.id}`}
                   className="block rounded-lg border border-slate-700 bg-slate-900/50 p-4 transition hover:border-slate-600"
                 >
-                  <span className="font-medium">{m.project?.title ?? "Project"}</span>
+                  <BionicText
+                    as="span"
+                    className="font-medium"
+                    text={m.project?.title ?? "Project"}
+                  />
                   <p className="mt-1 text-xs text-slate-500">as {m.role?.title ?? "Member"}</p>
                   <Link
                     href={`/projects/${m.project.id}/space`}

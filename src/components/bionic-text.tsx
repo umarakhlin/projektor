@@ -1,66 +1,56 @@
-"use client";
-
-import { useSyncExternalStore } from "react";
 import type { ReactNode } from "react";
-import {
-  getA11yBionicSnapshot,
-  subscribeA11yBionicClass
-} from "@/lib/a11y-bionic-document";
-
-function splitBionic(text: string): ReactNode {
-  if (!text) return null;
-  return text.split(/(\s+)/).map((part, i) => {
-    if (part.length === 0) return null;
-    if (/^\s+$/.test(part)) {
-      return <span key={i}>{part}</span>;
-    }
-    if (part.length <= 1) {
-      return <span key={i}>{part}</span>;
-    }
-    const n = Math.max(1, Math.ceil(part.length * 0.4));
-    return (
-      <span key={i} className="inline">
-        <span className="a11y-bionic-head font-bold">{part.slice(0, n)}</span>
-        <span className="a11y-bionic-tail font-normal">{part.slice(n)}</span>
-      </span>
-    );
-  });
-}
 
 type BionicTextProps = {
-  text: string;
+  text: string | null | undefined;
   className?: string;
-  as?: "span" | "p" | "h1" | "h2" | "h3" | "div";
+  as?: "span" | "p" | "h1" | "h2" | "h3" | "div" | "li";
 };
 
-function useA11yBionicFromDocument() {
-  return useSyncExternalStore(
-    subscribeA11yBionicClass,
-    getA11yBionicSnapshot,
-    () => false
-  );
-}
-
 /**
- * Renders `text` with bionic-style emphasis on the first ~40% of each
- * word when `html` has `a11y-bionic` (toggled by the accessibility
- * widget). Subscribes to the class via useSyncExternalStore so this
- * works the same in the feed, Explore, and RSC-backed project pages.
+ * Always emits the bionic split spans. Visual emphasis (bold head, lighter
+ * tail) is applied only when `html.a11y-bionic` is present — purely via
+ * CSS in globals.css. This means BionicText behaves identically during SSR,
+ * hydration, and on RSC pages: no React Context, no useSyncExternalStore,
+ * no DOM mutations.
  */
 export function BionicText({
   text,
   className,
   as: Comp = "span"
 }: BionicTextProps) {
-  const bionic = useA11yBionicFromDocument();
-
-  if (!bionic) {
-    return <Comp className={className}>{text}</Comp>;
+  if (!text) {
+    return <Comp className={className}>{text ?? ""}</Comp>;
   }
+
+  const parts = text.split(/(\s+)/);
+  const children: ReactNode[] = [];
+
+  parts.forEach((part, i) => {
+    if (part.length === 0) return;
+    if (/^\s+$/.test(part)) {
+      children.push(part);
+      return;
+    }
+    if (part.length <= 1) {
+      children.push(
+        <span key={i} className="a11y-bionic-head">
+          {part}
+        </span>
+      );
+      return;
+    }
+    const n = Math.max(1, Math.ceil(part.length * 0.4));
+    children.push(
+      <span key={i} className="a11y-bionic-word">
+        <span className="a11y-bionic-head">{part.slice(0, n)}</span>
+        <span className="a11y-bionic-tail">{part.slice(n)}</span>
+      </span>
+    );
+  });
 
   return (
     <Comp className={className}>
-      <span className="a11y-bionic-words inline">{splitBionic(text)}</span>
+      <span className="a11y-bionic-words">{children}</span>
     </Comp>
   );
 }
