@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useState } from "react";
+import { useReportA11yBionic } from "@/components/a11y-bionic-context";
 
 type FontScale = "normal" | "large" | "xlarge";
 
@@ -65,19 +66,23 @@ export function AccessibilityWidget() {
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [settings, setSettings] = useState<Settings>(DEFAULTS);
+  const reportBionic = useReportA11yBionic();
 
-  useEffect(() => {
+  // useLayoutEffect so bionic is reported before first paint and matches localStorage
+  useLayoutEffect(() => {
     setMounted(true);
     const loaded = loadSettings();
     setSettings(loaded);
     applySettings(loaded);
-  }, []);
+    reportBionic(loaded.bionicReading);
+  }, [reportBionic]);
 
   useEffect(() => {
     if (!mounted) return;
     applySettings(settings);
     saveSettings(settings);
-  }, [settings, mounted]);
+    reportBionic(settings.bionicReading);
+  }, [settings, mounted, reportBionic]);
 
   const update = useCallback(
     <K extends keyof Settings>(key: K, value: Settings[K]) => {

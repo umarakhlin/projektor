@@ -2,43 +2,45 @@
 
 import {
   createContext,
+  useCallback,
   useContext,
-  useEffect,
   useState,
   type ReactNode
 } from "react";
 
-const A11yBionicContext = createContext(false);
+type A11yBionicValue = {
+  bionic: boolean;
+  reportBionic: (enabled: boolean) => void;
+};
+
+const A11yBionicContext = createContext<A11yBionicValue | null>(null);
 
 /**
- * Listens for `html` class `a11y-bionic` (toggled by AccessibilityWidget)
- * so bionic text can re-render with word-level emphasis without mutating
- * the live DOM.
+ * `bionic` is the single source of truth for word-level bionic in React.
+ * The accessibility widget must call `reportBionic` whenever local settings
+ * or localStorage state changes — do not rely only on a class on <html> +
+ * MutationObserver (race: child useEffect can add the class before the
+ * parent observer is attached, so React never re-renders with bionic: true).
  */
 export function A11yBionicProvider({ children }: { children: ReactNode }) {
   const [bionic, setBionic] = useState(false);
 
-  useEffect(() => {
-    const sync = () => {
-      if (typeof document === "undefined") return;
-      setBionic(document.documentElement.classList.contains("a11y-bionic"));
-    };
-    sync();
-    const o = new MutationObserver(sync);
-    o.observe(document.documentElement, {
-      attributes: true,
-      attributeFilter: ["class"]
-    });
-    return () => o.disconnect();
+  const reportBionic = useCallback((enabled: boolean) => {
+    setBionic(Boolean(enabled));
   }, []);
 
   return (
-    <A11yBionicContext.Provider value={bionic}>
+    <A11yBionicContext.Provider value={{ bionic, reportBionic }}>
       {children}
     </A11yBionicContext.Provider>
   );
 }
 
 export function useA11yBionicEnabled() {
-  return useContext(A11yBionicContext);
+  return useContext(A11yBionicContext)?.bionic ?? false;
+}
+
+/** Used by the accessibility widget; safe no-op if tree is ever wrong in tests. */
+export function useReportA11yBionic() {
+  return useContext(A11yBionicContext)?.reportBionic ?? (() => {});
 }
