@@ -1,6 +1,6 @@
 "use client";
 
-import { useLayoutEffect, useRef, type ReactNode } from "react";
+import { useLayoutEffect, useEffect, useRef, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import { textToBionicDocumentFragment } from "@/lib/bionic-split";
 
@@ -107,20 +107,19 @@ export function BionicDomApplier({ children }: Props) {
   const pathname = usePathname();
   const applying = useRef(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const staggerRef = useRef<ReturnType<typeof setTimeout>[]>([]);
 
   useLayoutEffect(() => {
     const root = ref.current;
     if (!root) return;
 
     const run = () => {
-      if (applying.current) return;
       if (debounceRef.current) {
         clearTimeout(debounceRef.current);
         debounceRef.current = null;
       }
       debounceRef.current = setTimeout(() => {
         debounceRef.current = null;
-        if (applying.current) return;
         applying.current = true;
         try {
           requestAnimationFrame(() => {
@@ -133,11 +132,23 @@ export function BionicDomApplier({ children }: Props) {
         } catch {
           applying.current = false;
         }
-      }, 64);
+      }, 100);
+    };
+
+    const runStaggered = () => {
+      staggerRef.current.forEach(clearTimeout);
+      staggerRef.current = [];
+      if (!document.documentElement.classList.contains("a11y-bionic")) return;
+      for (const ms of [0, 80, 200, 500, 1200, 2500]) {
+        const id = setTimeout(() => {
+          if (!root.isConnected) return;
+          runBionicOnRoot(root);
+        }, ms);
+        staggerRef.current.push(id);
+      }
     };
 
     const obsRoot = new MutationObserver(() => {
-      if (applying.current) return;
       run();
     });
     const obsHtml = new MutationObserver(() => {
@@ -149,14 +160,36 @@ export function BionicDomApplier({ children }: Props) {
       attributeFilter: ["class"]
     });
     run();
+    runStaggered();
 
     return () => {
       obsRoot.disconnect();
       obsHtml.disconnect();
+      staggerRef.current.forEach(clearTimeout);
+      staggerRef.current = [];
       if (debounceRef.current) {
         clearTimeout(debounceRef.current);
       }
     };
+  }, [pathname]);
+
+  const lastQueryRef = useRef("");
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    lastQueryRef.current = window.location.search;
+  }, [pathname]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const id = setInterval(() => {
+      if (!ref.current) return;
+      if (!document.documentElement.classList.contains("a11y-bionic")) return;
+      const q = window.location.search;
+      if (q === lastQueryRef.current) return;
+      lastQueryRef.current = q;
+      runBionicOnRoot(ref.current);
+    }, 400);
+    return () => clearInterval(id);
   }, [pathname]);
 
   return <div ref={ref}>{children}</div>;
