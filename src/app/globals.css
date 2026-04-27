@@ -91,14 +91,16 @@ html.a11y-readable-spacing li {
  * When the toggle is OFF, head/tail inherit the parent and look identical
  * to plain text. When `html.a11y-bionic` is ON, head becomes heavy and
  * tail becomes lighter, which produces the dyslexia-friendly word shape.
+ *
+ * Avoid `font: inherit` (shorthand) on bionic spans — in Safari it can
+ * interact badly with nested weights. Only neutralize when bionic is OFF.
  */
-.a11y-bionic-words,
-.a11y-bionic-word,
-.a11y-bionic-head,
-.a11y-bionic-tail {
-  font: inherit;
+html:not(.a11y-bionic) .a11y-bionic-words,
+html:not(.a11y-bionic) .a11y-bionic-word,
+html:not(.a11y-bionic) .a11y-bionic-head,
+html:not(.a11y-bionic) .a11y-bionic-tail {
   font-weight: inherit;
-  letter-spacing: inherit;
+  color: inherit;
 }
 
 html.a11y-bionic .a11y-bionic-head {
@@ -109,7 +111,43 @@ html.a11y-bionic .a11y-bionic-head {
 html.a11y-bionic .a11y-bionic-tail {
   font-weight: 300 !important;
   font-synthesis: weight;
-  opacity: 0.85;
+  opacity: 0.9;
+}
+
+/* DM / team chat: on colored bubbles, weight difference alone is often
+ * hard to see — add explicit contrast so bionic is obvious. */
+html.a11y-bionic .bg-brand .a11y-bionic-head {
+  color: #fff !important;
+  opacity: 1 !important;
+  -webkit-text-fill-color: #fff;
+}
+
+html.a11y-bionic .bg-brand .a11y-bionic-tail {
+  color: rgba(255, 255, 255, 0.7) !important;
+  font-weight: 400 !important;
+  opacity: 1 !important;
+  -webkit-text-fill-color: rgba(255, 255, 255, 0.7);
+}
+
+html.a11y-bionic .bg-slate-800 .a11y-bionic-head {
+  color: #f1f5f9 !important;
+}
+
+html.a11y-bionic .bg-slate-800 .a11y-bionic-tail {
+  color: #94a3b8 !important;
+  font-weight: 300 !important;
+}
+
+/* Muted one-line previews (e.g. Inbox) + secondary names: push contrast */
+html.a11y-bionic .text-slate-400 .a11y-bionic-head {
+  color: #e2e8f0 !important;
+  font-weight: 800 !important;
+}
+
+html.a11y-bionic .text-slate-400 .a11y-bionic-tail {
+  color: #94a3b8 !important;
+  font-weight: 300 !important;
+  opacity: 1 !important;
 }
 
 /*

@@ -5,6 +5,7 @@ import { Providers } from "@/components/providers";
 import { HeaderAuth } from "@/components/header-auth";
 import { AccessibilityWidget } from "@/components/accessibility-widget";
 import { NdaGate } from "@/components/nda-gate";
+import { A11Y_BOOT_INLINE_SCRIPT } from "@/lib/a11y-boot-inline";
 
 export const metadata: Metadata = {
   title: "Projektor",
@@ -17,7 +18,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{ __html: A11Y_BOOT_INLINE_SCRIPT }}
+        />
+      </head>
       <body className="min-h-screen bg-slate-950 text-slate-50">
         <Providers>
           <NdaGate />
