@@ -4,6 +4,8 @@ type BionicTextProps = {
   text: string | null | undefined;
   className?: string;
   as?: "span" | "p" | "h1" | "h2" | "h3" | "div" | "li";
+  /** Helps RTL / mixed-content messages (e.g. Hebrew) align correctly. */
+  dir?: "auto" | "ltr" | "rtl";
 };
 
 /**
@@ -16,10 +18,15 @@ type BionicTextProps = {
 export function BionicText({
   text,
   className,
-  as: Comp = "span"
+  as: Comp = "span",
+  dir
 }: BionicTextProps) {
   if (!text) {
-    return <Comp className={className}>{text ?? ""}</Comp>;
+    return (
+      <Comp className={className} dir={dir}>
+        {text ?? ""}
+      </Comp>
+    );
   }
 
   const parts = text.split(/(\s+)/);
@@ -49,7 +56,7 @@ export function BionicText({
   });
 
   return (
-    <Comp className={className}>
+    <Comp className={className} dir={dir}>
       <span className="a11y-bionic-words">{children}</span>
     </Comp>
   );

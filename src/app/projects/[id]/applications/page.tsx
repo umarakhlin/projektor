@@ -4,6 +4,7 @@ import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { parseJsonArray } from "@/lib/safe-json";
+import { BionicText } from "@/components/bionic-text";
 
 type Application = {
   id: string;
@@ -301,7 +302,12 @@ export default function ProjectApplicationsPage() {
                       </span>
                     </div>
                     {app.message && (
-                      <p className="mb-2 text-sm text-slate-300">{app.message}</p>
+                      <BionicText
+                        as="p"
+                        className="mb-2 text-sm text-slate-300"
+                        dir="auto"
+                        text={app.message}
+                      />
                     )}
                     {app.availability && (
                       <p className="mb-2 text-xs text-slate-500">

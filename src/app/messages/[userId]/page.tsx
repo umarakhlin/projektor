@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { broadcastMessagesEvent } from "@/lib/messages-bus";
+import { BionicText } from "@/components/bionic-text";
 
 type Message = {
   id: string;
@@ -166,7 +167,12 @@ export default function ChatPage() {
                     : "bg-slate-800 text-slate-100"
                 }`}
               >
-                <p className="whitespace-pre-wrap">{m.content}</p>
+                <BionicText
+                  as="p"
+                  className="whitespace-pre-wrap"
+                  dir="auto"
+                  text={m.content}
+                />
                 <p
                   className={`mt-1 text-[10px] ${m.direction === "out" ? "text-white/70" : "text-slate-400"}`}
                 >

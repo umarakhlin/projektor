@@ -339,6 +339,7 @@ export default function InboxPage() {
                           <BionicText
                             as="p"
                             className="mt-1 line-clamp-1 text-xs text-slate-400"
+                            dir="auto"
                             text={preview}
                           />
                         </div>

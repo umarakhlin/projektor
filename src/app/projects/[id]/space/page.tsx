@@ -4,6 +4,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { BionicText } from "@/components/bionic-text";
 
 type Update = {
   id: string;
@@ -261,7 +262,12 @@ export default function TeamSpacePage() {
                   <span className="text-xs text-slate-400">
                     {msg.author.name ?? "Someone"} · {new Date(msg.createdAt).toLocaleString()}
                   </span>
-                  <p className="text-sm text-slate-200">{msg.content}</p>
+                  <BionicText
+                    as="p"
+                    className="text-sm text-slate-200"
+                    dir="auto"
+                    text={msg.content}
+                  />
                 </div>
               ))
             )}
@@ -318,7 +324,12 @@ export default function TeamSpacePage() {
                 key={u.id}
                 className="rounded-lg border border-slate-700 bg-slate-900/50 p-4"
               >
-                <p className="text-slate-200">{u.content}</p>
+                <BionicText
+                  as="p"
+                  className="text-slate-200"
+                  dir="auto"
+                  text={u.content}
+                />
                 <p className="mt-2 text-xs text-slate-500">
                   {u.author.name ?? "Unknown"} · {new Date(u.createdAt).toLocaleDateString()}
                 </p>
