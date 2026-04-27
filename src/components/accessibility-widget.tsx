@@ -66,8 +66,8 @@ export function AccessibilityWidget() {
   const [mounted, setMounted] = useState(false);
   const [settings, setSettings] = useState<Settings>(DEFAULTS);
 
-  // useLayoutEffect: set html a11y classes before paint (BionicText uses
-  // useSyncExternalStore on that class — no separate React context).
+  // useLayoutEffect: set html a11y classes before paint; BionicDomApplier + CSS
+  // handle site-wide bionic when `a11y-bionic` is on.
   useLayoutEffect(() => {
     setMounted(true);
     const loaded = loadSettings();
@@ -172,7 +172,7 @@ export function AccessibilityWidget() {
               />
               <ToggleRow
                 label="Bionic reading"
-                description="Bold weight on the first part of each word, same text color (lists, project pages, messages)."
+                description="Applies bionic word emphasis across the app (same text color, heavier weight on word starts) — header, main content, and forms; code/blocks and this panel are excluded."
                 checked={settings.bionicReading}
                 onChange={(v) => update("bionicReading", v)}
               />
