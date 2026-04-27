@@ -205,24 +205,29 @@ export default function InboxPage() {
 
   return (
     <div className="mx-auto max-w-lg">
-      <h1 className="text-xl font-semibold">Inbox</h1>
-      <p className="mt-2 mb-6 text-sm leading-relaxed text-slate-400">
-        <strong className="font-medium text-slate-300">Offers</strong> are invitations after a creator
-        wants you on their team. <strong className="font-medium text-slate-300">Applications</strong>{" "}
-        are updates for projects you own.{" "}
-        <strong className="font-medium text-slate-300">Messages</strong> are direct messages from other
-        users. <strong className="font-medium text-slate-300">Team chat</strong>{" "}
-        lists projects where you are already a member.
-      </p>
+      <BionicText
+        as="h1"
+        className="text-xl font-semibold"
+        text="Inbox"
+      />
+      <BionicText
+        as="p"
+        className="mt-2 mb-6 text-sm leading-relaxed text-slate-400"
+        text="Offers are invitations after a creator wants you on their team. Applications are updates for projects you own. Messages are direct messages from other users. Team chat lists projects where you are already a member."
+      />
 
       {inboxEmpty ? (
         <div className="rounded-xl border border-slate-800 bg-slate-900/40 px-4 py-5 text-sm text-slate-400">
-          <p className="text-slate-200">Nothing here yet — that is normal when you are getting started.</p>
-          <p className="mt-2">
-            Apply to roles on the feed or Explore; when someone sends an offer, it will show up under
-            Offers. Application alerts appear when you own projects; team chat appears after you join a
-            team.
-          </p>
+          <BionicText
+            as="p"
+            className="text-slate-200"
+            text="Nothing here yet — that is normal when you are getting started."
+          />
+          <BionicText
+            as="p"
+            className="mt-2"
+            text="Apply to roles on the feed or Explore; when someone sends an offer, it will show up under Offers. Application alerts appear when you own projects; team chat appears after you join a team."
+          />
           <div className="mt-4 flex flex-wrap gap-3">
             <Link
               href="/explore"
@@ -242,15 +247,17 @@ export default function InboxPage() {
         <>
           {/* Offers */}
           <section className="mb-8">
-            <h2 className="mb-2 text-sm font-medium uppercase tracking-wide text-slate-500">
-              Offers
-            </h2>
+            <BionicText
+              as="h2"
+              className="mb-2 text-sm font-medium uppercase tracking-wide text-slate-500"
+              text="Offers"
+            />
             {!hasOffers ? (
               <div className="rounded-xl border border-slate-800 bg-slate-900/40 px-4 py-4 text-sm text-slate-400">
-                <p>
-                  No pending offers. When a project owner accepts your application, their invite appears
-                  here.
-                </p>
+                <BionicText
+                  as="p"
+                  text="No pending offers. When a project owner accepts your application, their invite appears here."
+                />
                 <Link href="/explore" className="mt-2 inline-block font-medium text-brand hover:underline">
                   Browse projects to apply →
                 </Link>
@@ -296,15 +303,17 @@ export default function InboxPage() {
 
           {/* Direct messages */}
           <section className="mb-8">
-            <h2 className="mb-2 text-sm font-medium uppercase tracking-wide text-slate-500">
-              Messages
-            </h2>
+            <BionicText
+              as="h2"
+              className="mb-2 text-sm font-medium uppercase tracking-wide text-slate-500"
+              text="Messages"
+            />
             {!hasMessages ? (
               <div className="rounded-xl border border-slate-800 bg-slate-900/40 px-4 py-4 text-sm text-slate-400">
-                <p>
-                  No messages yet. Messages you send or receive from Talent
-                  appear here.
-                </p>
+                <BionicText
+                  as="p"
+                  text="No messages yet. Messages you send or receive from Talent appear here."
+                />
               </div>
             ) : (
               <div className="space-y-2">
@@ -336,12 +345,14 @@ export default function InboxPage() {
                               </span>
                             )}
                           </div>
-                          <BionicText
-                            as="p"
-                            className="mt-1 line-clamp-1 text-xs text-slate-400"
-                            dir="auto"
-                            text={preview}
-                          />
+                          <div className="mt-1 min-w-0 line-clamp-1 text-xs text-slate-400">
+                            <BionicText
+                              as="span"
+                              className="text-xs text-slate-400"
+                              dir="auto"
+                              text={preview}
+                            />
+                          </div>
                         </div>
                         <p className="whitespace-nowrap text-[10px] text-slate-500">
                           {new Date(conv.lastAt).toLocaleDateString()}
@@ -356,12 +367,17 @@ export default function InboxPage() {
 
           {/* Application notifications (for project owners) */}
           <section className="mb-8">
-            <h2 className="mb-2 text-sm font-medium uppercase tracking-wide text-slate-500">
-              Applications
-            </h2>
+            <BionicText
+              as="h2"
+              className="mb-2 text-sm font-medium uppercase tracking-wide text-slate-500"
+              text="Applications"
+            />
             {!hasApps ? (
               <div className="rounded-xl border border-slate-800 bg-slate-900/40 px-4 py-4 text-sm text-slate-400">
-                <p>No new application alerts. When someone applies to your project, a summary shows here.</p>
+                <BionicText
+                  as="p"
+                  text="No new application alerts. When someone applies to your project, a summary shows here."
+                />
                 <Link href="/my-projects" className="mt-2 inline-block font-medium text-brand hover:underline">
                   My projects →
                 </Link>
@@ -374,11 +390,16 @@ export default function InboxPage() {
                     href={`/projects/${app.projectId}/applications`}
                     className="block rounded-lg border border-slate-700 bg-slate-900/50 p-3 transition hover:border-slate-600"
                   >
-                    <p className="font-medium text-slate-200">
-                      {app.applicantName} applied to <span className="text-brand">{app.roleTitle}</span> on{" "}
-                      {app.projectTitle}
-                    </p>
-                    <p className="mt-1 text-xs text-slate-500">View applications →</p>
+                    <BionicText
+                      as="p"
+                      className="font-medium text-slate-200"
+                      text={`${app.applicantName} applied to ${app.roleTitle} on ${app.projectTitle}`}
+                    />
+                    <BionicText
+                      as="p"
+                      className="mt-1 text-xs text-slate-500"
+                      text="View applications →"
+                    />
                   </Link>
                 ))}
               </div>
@@ -387,15 +408,17 @@ export default function InboxPage() {
 
           {/* Team chat (projects you're in) */}
           <section>
-            <h2 className="mb-2 text-sm font-medium uppercase tracking-wide text-slate-500">
-              Team chat
-            </h2>
+            <BionicText
+              as="h2"
+              className="mb-2 text-sm font-medium uppercase tracking-wide text-slate-500"
+              text="Team chat"
+            />
             {!hasChat ? (
               <div className="rounded-xl border border-slate-800 bg-slate-900/40 px-4 py-4 text-sm text-slate-400">
-                <p>
-                  You are not in any project teams yet. Accept an offer from the Offers section above, then
-                  open Team Space from here or the header.
-                </p>
+                <BionicText
+                  as="p"
+                  text="You are not in any project teams yet. Accept an offer from the Offers section above, then open Team Space from here or the header."
+                />
                 <Link href="/team-space" className="mt-2 inline-block font-medium text-brand hover:underline">
                   Team Space hub →
                 </Link>
@@ -408,10 +431,16 @@ export default function InboxPage() {
                     href={`/projects/${m.project.id}/space`}
                     className="block rounded-lg border border-slate-700 bg-slate-900/50 p-3 transition hover:border-slate-600"
                   >
-                    <p className="font-medium text-slate-200">{m.project.title}</p>
-                    <p className="mt-1 text-xs text-slate-500">
-                      Team space & chat · as {m.role.title} →
-                    </p>
+                    <BionicText
+                      as="p"
+                      className="font-medium text-slate-200"
+                      text={m.project.title}
+                    />
+                    <BionicText
+                      as="p"
+                      className="mt-1 text-xs text-slate-500"
+                      text={`Team space & chat · as ${m.role.title} →`}
+                    />
                   </Link>
                 ))}
               </div>

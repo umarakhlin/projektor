@@ -172,7 +172,7 @@ export function AccessibilityWidget() {
               />
               <ToggleRow
                 label="Bionic reading"
-                description="Bolds the first part of each word in feeds and on project pages (React-rendered—no DOM hacks)."
+                description="Bold weight on the first part of each word, same text color (lists, project pages, messages)."
                 checked={settings.bionicReading}
                 onChange={(v) => update("bionicReading", v)}
               />
