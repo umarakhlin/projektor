@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useLayoutEffect, useState } from "react";
-import { useReportA11yBionic } from "@/components/a11y-bionic-context";
 
 type FontScale = "normal" | "large" | "xlarge";
 
@@ -66,23 +65,21 @@ export function AccessibilityWidget() {
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [settings, setSettings] = useState<Settings>(DEFAULTS);
-  const reportBionic = useReportA11yBionic();
 
-  // useLayoutEffect so bionic is reported before first paint and matches localStorage
+  // useLayoutEffect: set html a11y classes before paint (BionicText uses
+  // useSyncExternalStore on that class — no separate React context).
   useLayoutEffect(() => {
     setMounted(true);
     const loaded = loadSettings();
     setSettings(loaded);
     applySettings(loaded);
-    reportBionic(loaded.bionicReading);
-  }, [reportBionic]);
+  }, []);
 
   useEffect(() => {
     if (!mounted) return;
     applySettings(settings);
     saveSettings(settings);
-    reportBionic(settings.bionicReading);
-  }, [settings, mounted, reportBionic]);
+  }, [settings, mounted]);
 
   const update = useCallback(
     <K extends keyof Settings>(key: K, value: Settings[K]) => {

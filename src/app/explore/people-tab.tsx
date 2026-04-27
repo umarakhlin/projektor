@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
+import { BionicText } from "@/components/bionic-text";
 
 type Role = {
   id: string;
@@ -436,7 +437,7 @@ export function PeopleTab() {
                         href={`/profile/${u.id}`}
                         className="font-medium text-brand hover:underline"
                       >
-                        {u.name ?? "User"}
+                        <BionicText as="span" text={u.name ?? "User"} />
                       </Link>
                     </div>
                     {u.email && (

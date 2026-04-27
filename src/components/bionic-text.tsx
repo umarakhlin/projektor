@@ -1,7 +1,11 @@
 "use client";
 
+import { useSyncExternalStore } from "react";
 import type { ReactNode } from "react";
-import { useA11yBionicEnabled } from "./a11y-bionic-context";
+import {
+  getA11yBionicSnapshot,
+  subscribeA11yBionicClass
+} from "@/lib/a11y-bionic-document";
 
 function splitBionic(text: string): ReactNode {
   if (!text) return null;
@@ -29,17 +33,26 @@ type BionicTextProps = {
   as?: "span" | "p" | "h1" | "h2" | "h3" | "div";
 };
 
+function useA11yBionicFromDocument() {
+  return useSyncExternalStore(
+    subscribeA11yBionicClass,
+    getA11yBionicSnapshot,
+    () => false
+  );
+}
+
 /**
  * Renders `text` with bionic-style emphasis on the first ~40% of each
- * word when the accessibility "Bionic reading" mode is on. When off, plain
- * text. Safe for React (no post-render DOM walking).
+ * word when `html` has `a11y-bionic` (toggled by the accessibility
+ * widget). Subscribes to the class via useSyncExternalStore so this
+ * works the same in the feed, Explore, and RSC-backed project pages.
  */
 export function BionicText({
   text,
   className,
   as: Comp = "span"
 }: BionicTextProps) {
-  const bionic = useA11yBionicEnabled();
+  const bionic = useA11yBionicFromDocument();
 
   if (!bionic) {
     return <Comp className={className}>{text}</Comp>;
